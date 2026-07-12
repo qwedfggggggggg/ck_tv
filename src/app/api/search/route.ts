@@ -4,7 +4,7 @@ import { getCacheTime, getConfig } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
 import { yellowWords } from '@/lib/yellow';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 const searchCache = new Map<string, { data: any; expiresAt: number }>();
 const CACHE_TTL_MS = 60_000;

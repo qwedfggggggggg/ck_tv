@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 // Edge Runtime 不支持 SSDP/UDP，返回提示信息
 export async function POST() {

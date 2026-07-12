@@ -6,7 +6,7 @@ import { getAuthInfoFromCookie } from '@/lib/auth';
 import { getConfig } from '@/lib/config';
 import { getStorage } from '@/lib/db';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 export async function POST(request: NextRequest) {
   const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     const adminConfig = await getConfig();
-    const storage = getStorage();
+    const storage = await getStorage();
 
     // 权限校验
     if (username !== process.env.USERNAME) {

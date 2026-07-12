@@ -70,7 +70,7 @@ async function initConfig() {
   const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
   if (storageType !== 'localstorage') {
     // 数据库存储，读取并补全管理员配置
-    const storage = getStorage();
+    const storage = await getStorage();
 
     try {
       // 尝试从数据库获取管理员配置
@@ -283,7 +283,7 @@ export async function getConfig(): Promise<AdminConfig> {
     return cachedConfig;
   }
   // 非 docker 环境且 DB 存储，直接读 db 配置
-  const storage = getStorage();
+  const storage = await getStorage();
   let adminConfig: AdminConfig | null = null;
   if (storage && typeof (storage as any).getAdminConfig === 'function') {
     adminConfig = await (storage as any).getAdminConfig();
@@ -387,7 +387,7 @@ export async function getConfig(): Promise<AdminConfig> {
 
 export async function resetConfig() {
   const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
-  const storage = getStorage();
+  const storage = await getStorage();
   // 获取所有用户名，用于补全 Users
   let userNames: string[] = [];
   if (storage && typeof (storage as any).getAllUsers === 'function') {

@@ -6,7 +6,7 @@ import { getAuthInfoFromCookie } from '@/lib/auth';
 import { getStorage } from '@/lib/db';
 import { IStorage } from '@/lib/types';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 export async function POST(request: NextRequest) {
   const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 获取存储实例
-    const storage: IStorage | null = getStorage();
+    const storage: IStorage | null = await getStorage();
     if (!storage || typeof storage.changePassword !== 'function') {
       return NextResponse.json(
         { error: '存储服务不支持修改密码' },
