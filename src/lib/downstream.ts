@@ -106,6 +106,7 @@ export async function searchFromApi(
         desc: cleanHtmlTags(item.vod_content || ''),
         type_name: item.type_name,
         douban_id: item.vod_douban_id,
+        remark: item.vod_remarks,
       };
     });
 
@@ -176,6 +177,7 @@ export async function searchFromApi(
                 desc: cleanHtmlTags(item.vod_content || ''),
                 type_name: item.type_name,
                 douban_id: item.vod_douban_id,
+                remark: item.vod_remarks,
               };
             });
           } catch (error) {
@@ -282,6 +284,7 @@ export async function getDetailFromApi(
     desc: cleanHtmlTags(videoDetail.vod_content),
     type_name: videoDetail.type_name,
     douban_id: videoDetail.vod_douban_id,
+    remark: videoDetail.vod_remarks,
   };
 }
 

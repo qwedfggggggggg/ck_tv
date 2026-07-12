@@ -3,7 +3,7 @@
 
 import { ChevronUp, Search, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   addSearchHistory,
@@ -138,6 +138,46 @@ function SearchPageClient() {
       setShowResults(false);
     }
   }, [searchParams]);
+
+  const enrichedTitles = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (!searchResults.length) return;
+    const missing = searchResults.filter(r => !r.douban_id);
+    if (!missing.length) return;
+
+    const unique = new Map<string, SearchResult>();
+    missing.forEach(r => {
+      const key = r.title.toLowerCase().trim();
+      if (!enrichedTitles.current.has(key)) {
+        unique.set(key, r);
+      }
+    });
+    if (!unique.size) return;
+
+    for (const result of Array.from(unique.values())) {
+      const key = result.title.toLowerCase().trim();
+      enrichedTitles.current.add(key);
+      fetch(`/api/douban/search?keyword=${encodeURIComponent(result.title)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.list?.length) {
+            const match = result.year && result.year !== 'unknown'
+              ? data.list.find((i: any) => i.year === result.year)
+              : null;
+            const found = match || data.list[0];
+            if (found?.id) {
+              setSearchResults(prev => prev.map(r =>
+                r.title.toLowerCase().trim() === key && !r.douban_id
+                  ? { ...r, douban_id: parseInt(found.id) }
+                  : r
+              ));
+            }
+          }
+        })
+        .catch(() => { /* background enrichment - fail silently */ });
+    }
+  }, [searchResults]);
 
   const fetchSearchResults = async (query: string) => {
     try {

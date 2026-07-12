@@ -107,6 +107,7 @@ export default function VideoCard({
   );
   const actualEpisodes = aggregateData?.mostFrequentEpisodes ?? episodes;
   const actualYear = aggregateData?.first.year ?? year;
+  const actualRemark = aggregateData?.first.remark ?? undefined;
   const actualQuery = query || '';
   const actualSearchType = isAggregate
     ? aggregateData?.first.episodes?.length === 1
@@ -422,6 +423,9 @@ export default function VideoCard({
             </span>
           </span>
         ) : null}
+        {actualRemark && (
+          <span className='text-xs text-blue-400'>{actualRemark}</span>
+        )}
       </div>
     </div>
   );
