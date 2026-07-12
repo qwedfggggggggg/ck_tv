@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { getCacheTime, getConfig } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
 import { yellowWords } from '@/lib/yellow';
-import { isSourceDead } from '@/lib/dead-source-cache';
+import { shouldSkipSource, recordSearchResult } from '@/lib/dead-source-cache';
 
 export const runtime = 'edge';
 
@@ -43,12 +43,20 @@ export async function GET(request: Request) {
   let apiSites = config.SourceConfig.filter((site) => !site.disabled);
 
   // 跳过已知失效的源
-  apiSites = apiSites.filter((site) => !isSourceDead(site.key));
+  apiSites = apiSites.filter((site) => !shouldSkipSource(site.key));
 
   const searchPromises = apiSites.map((site) => searchFromApi(site, query));
 
   try {
     const settled = await Promise.allSettled(searchPromises);
+    // Record per-source health
+    if (apiSites.length > 0) {
+      settled.forEach((r, i) => {
+        const key = apiSites[i].key;
+        const success = r.status === 'fulfilled' && r.value.length > 0;
+        recordSearchResult(key, success);
+      });
+    }
     let results = settled
       .filter((x): x is PromiseFulfilledResult<any> => x.status === 'fulfilled')
       .flatMap((x) => x.value);
