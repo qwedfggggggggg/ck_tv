@@ -682,6 +682,46 @@ function PlayPageClient() {
       }
     };
 
+    // 轻量选源：不下载测速，仅靠域名偏好和集数评分
+    const pickBestSourceLight = (sources: SearchResult[]): SearchResult => {
+      if (sources.length <= 1) return sources[0];
+
+      // CDN 域名速度偏好（基于测速: v.qq ~450KB/s >> 其他）
+      const cdnRank: Record<string, number> = {
+        'v.qq.com': 90, 'qq.com': 85, 'tx.com': 80,
+        'aliyundrive': 60, 'alivv': 60,
+        'pstatp': 40, 'bytedance': 40,
+        'iqiyi': 30, 'qiyi': 30,
+        'bilibili': 20, 'bili': 20,
+        'm3u8': 50,
+      };
+
+      const scored = sources.map(s => {
+        const url = s.episodes?.[0] || '';
+        let cdnScore = 40; // 默认中等
+        for (const [key, score] of Object.entries(cdnRank)) {
+          if (url.includes(key)) { cdnScore = score; break; }
+        }
+
+        // 利用 source_name 判断源站速度
+        const name = (s.source_name || '').toLowerCase();
+
+        // 付费源优先（一般更快更稳定）
+        const isPaidSource = name.includes('腾讯') || name.includes('爱奇艺') || name.includes('优酷') || name.includes('芒果');
+        if (isPaidSource && cdnScore < 50) cdnScore += 20;
+
+        // 集数越多越好说明内容全
+        const epCount = s.episodes?.length || 0;
+        const epScore = Math.min(epCount, 100);
+
+        return { source: s, score: cdnScore + epScore };
+      });
+
+      scored.sort((a, b) => b.score - a.score);
+      console.log('[轻量选源]', scored.map(s => `${s.source.source_name}:${s.score}`).join(', '));
+      return scored[0].source;
+    };
+
     const initAll = async () => {
       if (!currentSource && !currentId && !videoTitle && !searchTitle) {
         setError('缺少必要参数');
@@ -727,15 +767,9 @@ function PlayPageClient() {
         }
       }
 
-      // 未指定源和 id 或需要优选，且开启优选开关
-      if (
-        (!currentSource || !currentId || needPreferRef.current) &&
-        optimizationEnabled
-      ) {
-        setLoadingStage('preferring');
-        setLoadingMessage('⚡ 正在优选最佳播放源...');
-
-        detailData = await preferBestSource(sourcesInfo);
+      // 未指定源和 id — 轻量选源（不下载测速）
+      if (!currentSource || !currentId) {
+        detailData = pickBestSourceLight(sourcesInfo);
       }
 
       console.log(detailData.source, detailData.id);
@@ -1252,8 +1286,8 @@ function PlayPageClient() {
 
     try {
       // 创建新的播放器实例
-      Artplayer.PLAYBACK_RATE = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
-      Artplayer.USE_RAF = true;
+      Artplayer.PLAYBACK_RATE = [0.5, 0.75, 1, 1.25, 1.5, 2];
+      Artplayer.USE_RAF = false;
 
       artPlayerRef.current = new Artplayer({
         container: artRef.current,
@@ -1313,14 +1347,21 @@ function PlayPageClient() {
               video.hls.destroy();
             }
             const hls = new Hls({
-              debug: false, // 关闭日志
-              enableWorker: true, // WebWorker 解码，降低主线程压力
-              lowLatencyMode: true, // 开启低延迟 LL-HLS
+              debug: false,
+              enableWorker: true,
 
-              /* 缓冲/内存相关 */
-              maxBufferLength: 30, // 前向缓冲最大 30s，过大容易导致高延迟
-              backBufferLength: 30, // 仅保留 30s 已播放内容，避免内存占用
-              maxBufferSize: 60 * 1000 * 1000, // 约 60MB，超出后触发清理
+              /* 点播模式 — 关掉 LL-HLS（它会主动限制缓冲） */
+              lowLatencyMode: false,
+
+              /* 缓冲调大 — 2x 时消耗翻倍，需要更多 margin */
+              maxBufferLength: 180,
+              backBufferLength: 30,
+              maxBufferSize: 200 * 1000 * 1000,
+
+              /* 画质控制 */
+              capLevelToPlayerSize: true,
+              abrBandWidthFactor: 0.8,
+              abrBandWidthUpFactor: 0.7,
 
               /* 自定义loader */
               loader: blockAdEnabledRef.current
@@ -1331,6 +1372,23 @@ function PlayPageClient() {
             hls.loadSource(url);
             hls.attachMedia(video);
             video.hls = hls;
+
+            let level480p = -1;
+            let level720p = -1;
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+              const levels = hls.levels;
+              for (let i = 0; i < levels.length; i++) {
+                const h = levels[i].height;
+                if (h <= 540) level480p = level480p === -1 ? i : level480p;
+                if (h <= 768) level720p = level720p === -1 ? i : level720p;
+              }
+              const capForRate = (_rate: number) => {
+                hls.autoLevelCapping = -1;
+                hls.currentLevel = -1;
+              };
+              capForRate(video.playbackRate);
+              video.addEventListener('ratechange', () => capForRate(video.playbackRate));
+            });
 
             ensureVideoSource(video, url);
 

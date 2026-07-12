@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server';
 
 // Cloudflare Pages 需要 Edge Runtime
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 // Edge Runtime 不支持 UPnP/DLNA 投屏
 // 返回提示信息，建议用户使用第三方投屏 App

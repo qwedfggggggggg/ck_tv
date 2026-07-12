@@ -205,7 +205,7 @@ export default function VideoCard({
       router.push(
         `/play?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(
           actualTitle
-        )}${actualYear ? `&year=${actualYear}` : ''}${isAggregate ? '&prefer=true' : ''
+        )        }${actualYear ? `&year=${actualYear}` : ''
         }${actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''
         }${actualSearchType ? `&stype=${actualSearchType}` : ''}`
       );

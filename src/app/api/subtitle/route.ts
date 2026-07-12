@@ -15,7 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Cloudflare Pages 需要 Edge Runtime
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 // -----------------------------------------------------------------------------
 // 免费额度配置

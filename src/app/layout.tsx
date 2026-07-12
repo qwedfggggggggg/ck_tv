@@ -13,7 +13,7 @@ import RuntimeConfig from '@/lib/runtime';
 import { GlobalErrorIndicator } from '../components/GlobalErrorIndicator';
 import { SiteProvider } from '../components/SiteProvider';
 import { ThemeProvider } from '../components/ThemeProvider';
-import { WelcomeModal } from '../components/WelcomeModal';
+
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -117,7 +117,6 @@ export default async function RootLayout({
           <SiteProvider siteName={siteName} announcement={announcement}>
             {children}
             <GlobalErrorIndicator />
-            <WelcomeModal />
           </SiteProvider>
         </ThemeProvider>
       </body>
