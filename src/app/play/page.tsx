@@ -2126,6 +2126,7 @@ function PlayPageClient() {
                 sourceSearchLoading={sourceSearchLoading}
                 sourceSearchError={sourceSearchError}
                 precomputedVideoInfo={precomputedVideoInfo}
+                episodeUrls={detail?.episodes}
               />
             </div>
           </div>
