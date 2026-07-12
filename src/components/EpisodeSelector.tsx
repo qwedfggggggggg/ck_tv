@@ -42,6 +42,8 @@ interface EpisodeSelectorProps {
   precomputedVideoInfo?: Map<string, VideoInfo>;
   /** 每一集的视频URL数组，用于预检测是否可访问 */
   episodeUrls?: { name: string; url: string }[];
+  /** 跨源合并映射: 集数索引 → 源名称列表, 用于徽章提示多源可用 */
+  episodeSources?: Map<number, string[]>;
 }
 
 /**
@@ -61,6 +63,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   sourceSearchError = null,
   precomputedVideoInfo,
   episodeUrls,
+  episodeSources,
 }) => {
   const router = useRouter();
   const pageCount = Math.ceil(totalEpisodes / episodesPerPage);
@@ -451,6 +454,14 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                   {status === 'dead' && (
                     <span className='absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-red-400' />
                   )}
+                  {(() => {
+                    const srcs = episodeSources?.get(episodeIndex);
+                    return srcs && srcs.length > 1 ? (
+                      <span className='absolute -top-1 -left-1 w-4 h-4 flex items-center justify-center bg-green-500 text-white text-[8px] leading-none font-bold rounded-full shadow-sm ring-1 ring-white dark:ring-gray-900'>
+                        {srcs.length}
+                      </span>
+                    ) : null;
+                  })()}
                 </button>
               );
             })}

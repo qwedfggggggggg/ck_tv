@@ -6,7 +6,7 @@ import Artplayer from 'artplayer';
 import Hls from 'hls.js';
 import { Heart } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   deleteFavorite,
@@ -185,6 +185,42 @@ function PlayPageClient() {
   useEffect(() => {
     availableSourcesRef.current = availableSources;
   }, [availableSources]);
+
+  // 跨源合并: 收集每个 episode 在所有匹配源中的 URL (集数差 ≤1 视为同一视频)
+  const mergedEpisodes = useMemo(() => {
+    if (!detail?.episodes) return [];
+    const primaryCount = detail.episodes.length;
+    return detail.episodes.map((ep, idx) => {
+      const alternatives: { sourceName: string; url: string }[] = [];
+      for (const src of availableSources) {
+        if (!src.episodes) continue;
+        if (Math.abs(src.episodes.length - primaryCount) > 1) continue;
+        if (idx >= src.episodes.length) continue;
+        const url = src.episodes[idx]?.url || '';
+        if (url && url !== ep.url) {
+          alternatives.push({ sourceName: src.source_name, url });
+        }
+      }
+      return { name: ep.name, primaryUrl: ep.url, alternatives };
+    });
+  }, [detail, availableSources]);
+
+  // episode → 源名称映射 (给 EpisodeSelector 徽章用)
+  const episodeSources = useMemo(() => {
+    const map = new Map<number, string[]>();
+    if (!detail || !availableSources.length) return map;
+    const primaryCount = detail.episodes?.length || 0;
+    for (const src of availableSources) {
+      if (!src.episodes) continue;
+      if (Math.abs(src.episodes.length - primaryCount) > 1) continue;
+      for (let i = 0; i < Math.min(src.episodes.length, primaryCount); i++) {
+        const existing = map.get(i) || [];
+        existing.push(src.source_name);
+        map.set(i, existing);
+      }
+    }
+    return map;
+  }, [detail, availableSources]);
 
   const [sourceSearchLoading, setSourceSearchLoading] = useState(false);
   const [sourceSearchError, setSourceSearchError] = useState<string | null>(
@@ -2127,6 +2163,7 @@ function PlayPageClient() {
                 sourceSearchError={sourceSearchError}
                 precomputedVideoInfo={precomputedVideoInfo}
                 episodeUrls={detail?.episodes}
+                episodeSources={episodeSources}
               />
             </div>
           </div>
