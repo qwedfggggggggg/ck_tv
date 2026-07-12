@@ -12,6 +12,7 @@ interface SourceHealth {
   status: 'ok' | 'slow' | 'dead';
   ping: number;
   checkedAt: number;
+  errorType?: 'timeout' | 'connection' | 'unknown';
 }
 
 export async function GET() {
@@ -37,20 +38,31 @@ export async function GET() {
           clearTimeout(timeout);
           const ping = Date.now() - start;
           const ok = resp.ok || resp.status === 404;
+          let status: 'ok' | 'slow' | 'dead';
+          if (ok) {
+            status = ping > 2000 ? 'slow' : 'ok';
+          } else {
+            status = 'dead';
+          }
           return {
             key: site.key,
             name: site.name,
-            status: ok ? (ping > 2000 ? 'slow' as const : 'ok' as const) : 'dead' as const,
+            status,
             ping,
             checkedAt: Date.now(),
+            ...(status === 'dead' ? { errorType: 'connection' as const } : {}),
           };
-        } catch {
+        } catch (error) {
+          const errorType = error instanceof DOMException && error.name === 'AbortError'
+            ? 'timeout' as const
+            : 'unknown' as const;
           return {
             key: site.key,
             name: site.name,
             status: 'dead' as const,
             ping: Date.now() - start,
             checkedAt: Date.now(),
+            errorType,
           };
         }
       })
