@@ -173,12 +173,16 @@ export async function searchFromApi(
       // 等待所有额外页的结果
       const additionalResults = await Promise.all(additionalPagePromises);
 
-      // 合并所有页的结果
-      additionalResults.forEach((pageResults) => {
-        if (pageResults.length > 0) {
-          results.push(...pageResults);
+      // 合并所有页的结果并去重
+      const seenIds = new Set<string>();
+      const allResults: typeof results = [];
+      [...results, ...additionalResults.flat()].forEach((item) => {
+        if (!seenIds.has(item.id)) {
+          seenIds.add(item.id);
+          allResults.push(item);
         }
       });
+      return allResults;
     }
 
     return results;
