@@ -41,7 +41,7 @@ interface EpisodeSelectorProps {
   /** 预计算的测速结果，避免重复测速 */
   precomputedVideoInfo?: Map<string, VideoInfo>;
   /** 每一集的视频URL数组，用于预检测是否可访问 */
-  episodeUrls?: string[];
+  episodeUrls?: { name: string; url: string }[];
 }
 
 /**
@@ -126,7 +126,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
       return;
     }
     const episodeUrl =
-      source.episodes.length > 1 ? source.episodes[1] : source.episodes[0];
+      source.episodes.length > 1 ? source.episodes[1]?.url || '' : source.episodes[0]?.url || '';
 
     // 标记为已尝试
     setAttemptedSources((prev) => new Set(prev).add(sourceKey));
@@ -294,8 +294,8 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
       onChange?.(episodeNumber);
 
       // 预检测该集的视频URL是否可访问
-      if (episodeUrls && episodeUrls[episodeNumber]) {
-        const url = episodeUrls[episodeNumber];
+      if (episodeUrls && episodeUrls[episodeNumber]?.url) {
+        const url = episodeUrls[episodeNumber]!.url;
         setVerifyStatus((prev) => new Map(prev).set(episodeNumber, 'checking'));
         fetch(`/api/verify-url?url=${encodeURIComponent(url)}`)
           .then((res) => res.json())
@@ -427,6 +427,8 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
             })().map((episodeNumber) => {
               const isActive = episodeNumber === value;
               const episodeIndex = episodeNumber - 1;
+              const ep = episodeUrls?.[episodeIndex];
+              const buttonText = ep?.name || episodeNumber.toString();
               const status = verifyStatus.get(episodeIndex);
               return (
                 <button
@@ -439,7 +441,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300 hover:scale-105 dark:bg-white/10 dark:text-gray-300 dark:hover:bg-white/20'
                     }`.trim()}
                 >
-                  {episodeNumber}
+                  {buttonText}
                   {status === 'checking' && (
                     <span className='absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-gray-400 animate-pulse' />
                   )}

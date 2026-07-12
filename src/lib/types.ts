@@ -86,7 +86,7 @@ export interface SearchResult {
   id: string;
   title: string;
   poster: string;
-  episodes: string[];
+  episodes: { name: string; url: string }[];
   source: string;
   source_name: string;
   class?: string;

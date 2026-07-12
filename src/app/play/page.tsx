@@ -272,8 +272,8 @@ function PlayPageClient() {
 
             const episodeUrl =
               source.episodes.length > 1
-                ? source.episodes[1]
-                : source.episodes[0];
+                ? source.episodes[1]?.url || ''
+                : source.episodes[0]?.url || '';
             const testResult = await getVideoResolutionFromM3u8(episodeUrl);
 
             return {
@@ -456,7 +456,7 @@ function PlayPageClient() {
       setVideoUrl('');
       return;
     }
-    const newUrl = detailData?.episodes[episodeIndex] || '';
+    const newUrl = detailData?.episodes[episodeIndex]?.url || '';
     if (newUrl !== videoUrl) {
       setVideoUrl(newUrl);
     }
@@ -623,7 +623,7 @@ function PlayPageClient() {
       const episodes = source.episodes;
       if (!episodes || epIndex >= episodes.length) continue;
 
-      const candidateUrl = episodes[epIndex];
+      const candidateUrl = episodes[epIndex]?.url || '';
       if (!candidateUrl || candidateUrl === failedUrl) continue;
 
       setFallbackTried(prev => new Set(prev).add(name));
@@ -751,7 +751,7 @@ function PlayPageClient() {
       };
 
       const scored = sources.map(s => {
-        const url = s.episodes?.[0] || '';
+        const url = s.episodes?.[0]?.url || '';
         let cdnScore = 40; // 默认中等
         for (const [key, score] of Object.entries(cdnRank)) {
           if (url.includes(key)) { cdnScore = score; break; }

@@ -72,25 +72,39 @@ export async function searchFromApi(
     }
     // 处理第一页结果
     const results = data.list.map((item: ApiSearchItem) => {
-      let episodes: string[] = [];
+      let episodes: { name: string; url: string }[] = [];
 
-      // 使用正则表达式从 vod_play_url 提取 m3u8 链接
+      // 从 vod_play_url 解析集数名称和链接
       if (item.vod_play_url) {
-        // 先用 $$$ 分割
         const vod_play_url_array = item.vod_play_url.split('$$$');
-        // 对每个分片做匹配，取匹配到最多的作为结果
-        vod_play_url_array.forEach((url: string) => {
-          const matches = extractM3u8Urls(url);
-          if (matches.length > episodes.length) {
-            episodes = matches;
+        vod_play_url_array.forEach((segment: string) => {
+          const episodeList = segment.split('#');
+          const parsed = episodeList
+            .map((ep: string) => {
+              const parts = ep.split('$');
+              return { name: parts[0] || '', url: parts.length > 1 ? parts[1] : '' };
+            })
+            .filter(
+              (ep: { name: string; url: string }) =>
+                ep.url && (ep.url.startsWith('http://') || ep.url.startsWith('https://'))
+            );
+          if (parsed.length > episodes.length) {
+            episodes = parsed;
           }
         });
       }
 
-      episodes = Array.from(new Set(episodes)).map((link: string) => {
-        const parenIndex = link.indexOf('(');
-        return parenIndex > 0 ? link.substring(0, parenIndex) : link;
-      });
+      // 去重并清理链接后缀
+      const seen = new Set<string>();
+      episodes = episodes.reduce<{ name: string; url: string }[]>((acc, ep) => {
+        const parenIndex = ep.url.indexOf('(');
+        const cleanUrl = parenIndex > 0 ? ep.url.substring(0, parenIndex) : ep.url;
+        if (!seen.has(cleanUrl)) {
+          seen.add(cleanUrl);
+          acc.push({ name: ep.name, url: cleanUrl });
+        }
+        return acc;
+      }, []);
 
       return {
         id: item.vod_id.toString(),
@@ -152,16 +166,38 @@ export async function searchFromApi(
               return [];
 
             return pageData.list.map((item: ApiSearchItem) => {
-              let episodes: string[] = [];
+              let episodes: { name: string; url: string }[] = [];
 
               if (item.vod_play_url) {
-                episodes = extractM3u8Urls(item.vod_play_url);
+                const vod_play_url_array = item.vod_play_url.split('$$$');
+                vod_play_url_array.forEach((segment: string) => {
+                  const episodeList = segment.split('#');
+                  const parsed = episodeList
+                    .map((ep: string) => {
+                      const parts = ep.split('$');
+                      return { name: parts[0] || '', url: parts.length > 1 ? parts[1] : '' };
+                    })
+                    .filter(
+                      (ep: { name: string; url: string }) =>
+                        ep.url && (ep.url.startsWith('http://') || ep.url.startsWith('https://'))
+                    );
+                  if (parsed.length > episodes.length) {
+                    episodes = parsed;
+                  }
+                });
               }
 
-              episodes = Array.from(new Set(episodes)).map((link: string) => {
-                const parenIndex = link.indexOf('(');
-                return parenIndex > 0 ? link.substring(0, parenIndex) : link;
-              });
+              // 去重并清理链接后缀
+              const seen = new Set<string>();
+              episodes = episodes.reduce<{ name: string; url: string }[]>((acc, ep) => {
+                const parenIndex = ep.url.indexOf('(');
+                const cleanUrl = parenIndex > 0 ? ep.url.substring(0, parenIndex) : ep.url;
+                if (!seen.has(cleanUrl)) {
+                  seen.add(cleanUrl);
+                  acc.push({ name: ep.name, url: cleanUrl });
+                }
+                return acc;
+              }, []);
 
               return {
                 id: item.vod_id.toString(),
@@ -245,7 +281,7 @@ export async function getDetailFromApi(
   }
 
   const videoDetail = data.list[0];
-  let episodes: string[] = [];
+  let episodes: { name: string; url: string }[] = [];
 
   // 处理播放源拆分
   if (videoDetail.vod_play_url) {
@@ -256,18 +292,18 @@ export async function getDetailFromApi(
       episodes = episodeList
         .map((ep: string) => {
           const parts = ep.split('$');
-          return parts.length > 1 ? parts[1] : '';
+          return { name: parts[0] || '', url: parts.length > 1 ? parts[1] : '' };
         })
         .filter(
-          (url: string) =>
-            url && (url.startsWith('http://') || url.startsWith('https://'))
+          (ep: { name: string; url: string }) =>
+            ep.url && (ep.url.startsWith('http://') || ep.url.startsWith('https://'))
         );
     }
   }
 
   // 如果播放源为空，则尝试从内容中解析 m3u8
   if (episodes.length === 0 && videoDetail.vod_content) {
-    episodes = extractM3u8Urls(videoDetail.vod_content);
+    episodes = extractM3u8Urls(videoDetail.vod_content).map(url => ({ name: '', url }));
   }
 
   return {
@@ -339,7 +375,7 @@ async function handleSpecialSourceDetail(
     id,
     title: titleText,
     poster: coverUrl,
-    episodes: matches,
+    episodes: matches.map(url => ({ name: '', url })),
     source: apiSite.key,
     source_name: apiSite.name,
     class: '',
