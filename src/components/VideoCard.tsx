@@ -58,6 +58,7 @@ export default function VideoCard({
   const router = useRouter();
   const [favorited, setFavorited] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showSources, setShowSources] = useState(false);
 
   const isAggregate = from === 'search' && !!items?.length;
 
@@ -382,7 +383,7 @@ export default function VideoCard({
           </div>
         </div>
         {allSourceNames ? (
-          <div className='flex flex-wrap gap-1 justify-center mt-1'>
+          <div className='flex flex-wrap gap-1 justify-center mt-1 items-center'>
             {allSourceNames.slice(0, 4).map((name) => (
               <span key={name} className='inline-block border rounded px-1.5 py-0.5 text-[10px] text-gray-500 dark:text-gray-400 border-gray-500/60 dark:border-gray-400/60'>
                 {name}
@@ -392,6 +393,26 @@ export default function VideoCard({
               <span className='text-[10px] text-gray-400 dark:text-gray-500'>
                 +{allSourceNames.length - 4}
               </span>
+            )}
+            {allSourceNames.length > 1 && (
+              <div className='relative'>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowSources(!showSources); }}
+                  className='text-xs text-gray-400 hover:text-white ml-1'
+                >
+                  ▼ {allSourceNames.length}源
+                </button>
+                {showSources && (
+                  <div className='absolute bottom-full left-0 mb-1 bg-gray-800 border border-gray-700 rounded p-2 z-10 min-w-[140px]'
+                       onMouseLeave={() => setShowSources(false)}>
+                    {allSourceNames.map((name, i) => (
+                      <div key={i} className='text-xs text-gray-300 py-0.5 whitespace-nowrap'>
+                        {i === 0 && '★ '}{name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         ) : config.showSourceName && actualSourceName ? (
