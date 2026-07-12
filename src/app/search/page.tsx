@@ -15,6 +15,7 @@ import {
 import { SearchResult } from '@/lib/types';
 import { yellowWords } from '@/lib/yellow';
 
+import { groupSimilar } from '@/lib/similarity';
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
 
@@ -32,38 +33,44 @@ function SearchPageClient() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  const normalizeKey = (s: string) =>
-    s.replaceAll(/[^\w\u4e00-\u9fff]/g, '').toLowerCase();
-
-  // 聚合后的结果（按标题和年份分组）
   const aggregatedResults = useMemo(() => {
-    const map = new Map<string, SearchResult[]>();
-    searchResults.forEach((item) => {
-      const normalized = normalizeKey(item.title);
-      if (!normalized) return;
-      const key = `${normalized}-${item.year || 'unknown'}-${item.episodes.length === 1 ? 'movie' : 'tv'}`;
-      const arr = map.get(key) || [];
-      arr.push(item);
-      map.set(key, arr);
+    if (!searchResults.length) return [];
+    const groups = groupSimilar(searchResults, { threshold: 0.85 });
+
+    const withSources = groups.map((group) => {
+      const allSourceNames = group.map((r) => r.source_name).filter(Boolean);
+      const best = group.reduce((a, b) => {
+        const scoreA =
+          ((a.episodes?.length ?? 0) > 0 ? 1 : 0) +
+          (a.poster ? 1 : 0) +
+          (a.year && a.year !== 'unknown' ? 1 : 0);
+        const scoreB =
+          ((b.episodes?.length ?? 0) > 0 ? 1 : 0) +
+          (b.poster ? 1 : 0) +
+          (b.year && b.year !== 'unknown' ? 1 : 0);
+        return scoreB > scoreA ? b : a;
+      });
+      return { best: { ...best, allSourceNames } as SearchResult & { allSourceNames: string[] }, group };
     });
-    return Array.from(map.entries()).sort((a, b) => {
-      const aExactMatch = normalizeKey(a[1][0].title)
-        .includes(normalizeKey(searchQuery));
-      const bExactMatch = normalizeKey(b[1][0].title)
-        .includes(normalizeKey(searchQuery));
-      if (aExactMatch && !bExactMatch) return -1;
-      if (!aExactMatch && bExactMatch) return 1;
-      // 按源数量降序（多源的优先展示）
-      if (a[1].length !== b[1].length) return b[1].length - a[1].length;
-      // 按年份降序
-      const aYear = a[1][0].year;
-      const bYear = b[1][0].year;
-      if (aYear !== 'unknown' && bYear !== 'unknown') {
-        return parseInt(bYear) - parseInt(aYear);
-      }
-      return a[1][0].title.localeCompare(b[1][0].title);
+
+    withSources.sort((a, b) => {
+      const aCount = a.best.allSourceNames?.length ?? 1;
+      const bCount = b.best.allSourceNames?.length ?? 1;
+      if (bCount !== aCount) return bCount - aCount;
+      const aHasYear = a.best.year && a.best.year !== 'unknown' ? 1 : 0;
+      const bHasYear = b.best.year && b.best.year !== 'unknown' ? 1 : 0;
+      if (bHasYear !== aHasYear) return bHasYear - aHasYear;
+      const aHasPoster = a.best.poster ? 1 : 0;
+      const bHasPoster = b.best.poster ? 1 : 0;
+      if (bHasPoster !== aHasPoster) return bHasPoster - aHasPoster;
+      const aHasEps = (a.best.episodes?.length ?? 0) > 0 ? 1 : 0;
+      const bHasEps = (b.best.episodes?.length ?? 0) > 0 ? 1 : 0;
+      if (bHasEps !== aHasEps) return bHasEps - aHasEps;
+      return 0;
     });
-  }, [searchResults, searchQuery]);
+
+    return withSources.map(({ best, group }) => [best.title, group] as [string, SearchResult[]]);
+  }, [searchResults]);
 
   useEffect(() => {
     // 无搜索参数时聚焦搜索框
