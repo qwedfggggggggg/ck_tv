@@ -141,7 +141,10 @@ function LoginPageClient() {
       });
 
       if (res.ok) {
-        const redirect = searchParams.get('redirect') || '/';
+        let redirect = searchParams.get('redirect') || '/';
+        if (!redirect.startsWith('/') || redirect.startsWith('//')) {
+          redirect = '/';
+        }
         router.replace(redirect);
       } else if (res.status === 401) {
         setError('密码错误');

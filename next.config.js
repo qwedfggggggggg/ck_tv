@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 /* eslint-disable @typescript-eslint/no-var-requires */
+const webpack = require('webpack');
+
 const nextConfig = {
   output: 'standalone',
   eslint: {
@@ -25,6 +27,12 @@ const nextConfig = {
   },
 
   webpack(config) {
+    config.plugins.push(
+      new webpack.DefinePlugin({
+        'process.env.PASSWORD': JSON.stringify(process.env.PASSWORD || ''),
+      })
+    );
+
     // Grab the existing rule that handles SVG imports
     const fileLoaderRule = config.module.rules.find((rule) =>
       rule.test?.test?.('.svg')

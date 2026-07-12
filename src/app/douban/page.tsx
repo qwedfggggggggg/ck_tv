@@ -23,6 +23,7 @@ function DoubanPageClient() {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectorsReady, setSelectorsReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -154,6 +155,7 @@ function DoubanPageClient() {
   // 防抖的数据加载函数
   const loadInitialData = useCallback(async () => {
     try {
+      setError(null);
       setLoading(true);
       let data: DoubanResult;
 
@@ -187,6 +189,8 @@ function DoubanPageClient() {
       }
     } catch (err) {
       console.error(err);
+      setLoading(false);
+      setError('获取数据失败，请稍后重试');
     }
   }, [
     type,
@@ -238,6 +242,7 @@ function DoubanPageClient() {
     if (currentPage > 0) {
       const fetchMoreData = async () => {
         try {
+          setError(null);
           setIsLoadingMore(true);
 
           let data: DoubanResult;
@@ -273,6 +278,7 @@ function DoubanPageClient() {
           }
         } catch (err) {
           console.error(err);
+          setError('加载更多失败，请稍后重试');
         } finally {
           setIsLoadingMore(false);
         }
@@ -467,8 +473,15 @@ function DoubanPageClient() {
             <div className='text-center text-gray-500 py-8'>已加载全部内容</div>
           )}
 
+          {/* 错误提示 */}
+          {error && (
+            <div className='max-w-[95%] mx-auto mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'>
+              {error}
+            </div>
+          )}
+
           {/* 空状态 */}
-          {!loading && doubanData.length === 0 && (
+          {!loading && doubanData.length === 0 && !error && (
             <div className='text-center text-gray-500 py-8'>暂无相关内容</div>
           )}
         </div>
@@ -479,7 +492,7 @@ function DoubanPageClient() {
 
 export default function DoubanPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" /></div>}>
       <DoubanPageClient />
     </Suspense>
   );

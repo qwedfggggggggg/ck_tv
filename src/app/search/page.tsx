@@ -30,67 +30,40 @@ function SearchPageClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
-  // 获取默认聚合设置：只读取用户本地设置，默认为 true
-  const getDefaultAggregate = () => {
-    if (typeof window !== 'undefined') {
-      const userSetting = localStorage.getItem('defaultAggregateSearch');
-      if (userSetting !== null) {
-        return JSON.parse(userSetting);
-      }
-    }
-    return true; // 默认启用聚合
-  };
-
-  const [viewMode, setViewMode] = useState<'agg' | 'all'>(() => {
-    return getDefaultAggregate() ? 'agg' : 'all';
-  });
+  const normalizeKey = (s: string) =>
+    s.replaceAll(/[^\w\u4e00-\u9fff]/g, '').toLowerCase();
 
   // 聚合后的结果（按标题和年份分组）
   const aggregatedResults = useMemo(() => {
     const map = new Map<string, SearchResult[]>();
     searchResults.forEach((item) => {
-      // 使用 title + year + type 作为键，year 必然存在，但依然兜底 'unknown'
-      const key = `${item.title.replaceAll(' ', '')}-${
-        item.year || 'unknown'
-      }-${item.episodes.length === 1 ? 'movie' : 'tv'}`;
+      const normalized = normalizeKey(item.title);
+      if (!normalized) return;
+      const key = `${normalized}-${item.year || 'unknown'}-${item.episodes.length === 1 ? 'movie' : 'tv'}`;
       const arr = map.get(key) || [];
       arr.push(item);
       map.set(key, arr);
     });
     return Array.from(map.entries()).sort((a, b) => {
-      // 优先排序：标题与搜索词完全一致的排在前面
-      const aExactMatch = a[1][0].title
-        .replaceAll(' ', '')
-        .includes(searchQuery.trim().replaceAll(' ', ''));
-      const bExactMatch = b[1][0].title
-        .replaceAll(' ', '')
-        .includes(searchQuery.trim().replaceAll(' ', ''));
-
+      const aExactMatch = normalizeKey(a[1][0].title)
+        .includes(normalizeKey(searchQuery));
+      const bExactMatch = normalizeKey(b[1][0].title)
+        .includes(normalizeKey(searchQuery));
       if (aExactMatch && !bExactMatch) return -1;
       if (!aExactMatch && bExactMatch) return 1;
-
-      // 年份排序
-      if (a[1][0].year === b[1][0].year) {
-        return a[0].localeCompare(b[0]);
-      } else {
-        // 处理 unknown 的情况
-        const aYear = a[1][0].year;
-        const bYear = b[1][0].year;
-
-        if (aYear === 'unknown' && bYear === 'unknown') {
-          return 0;
-        } else if (aYear === 'unknown') {
-          return 1; // a 排在后面
-        } else if (bYear === 'unknown') {
-          return -1; // b 排在后面
-        } else {
-          // 都是数字年份，按数字大小排序（大的在前面）
-          return aYear > bYear ? -1 : 1;
-        }
+      // 按源数量降序（多源的优先展示）
+      if (a[1].length !== b[1].length) return b[1].length - a[1].length;
+      // 按年份降序
+      const aYear = a[1][0].year;
+      const bYear = b[1][0].year;
+      if (aYear !== 'unknown' && bYear !== 'unknown') {
+        return parseInt(bYear) - parseInt(aYear);
       }
+      return a[1][0].title.localeCompare(b[1][0].title);
     });
-  }, [searchResults]);
+  }, [searchResults, searchQuery]);
 
   useEffect(() => {
     // 无搜索参数时聚焦搜索框
@@ -161,6 +134,7 @@ function SearchPageClient() {
 
   const fetchSearchResults = async (query: string) => {
     try {
+      setSearchError(null);
       setIsLoading(true);
       const response = await fetch(
         `/api/search?q=${encodeURIComponent(query.trim())}`
@@ -206,6 +180,7 @@ function SearchPageClient() {
       setShowResults(true);
     } catch (error) {
       setSearchResults([]);
+      setSearchError('搜索失败，请检查网络后重试');
     } finally {
       setIsLoading(false);
     }
@@ -222,9 +197,6 @@ function SearchPageClient() {
     setShowResults(true);
 
     router.push(`/search?q=${encodeURIComponent(trimmed)}`);
-    // 直接发请求
-    fetchSearchResults(trimmed);
-
     // 保存到搜索历史 (事件监听会自动更新界面)
     addSearchHistory(trimmed);
   };
@@ -271,75 +243,31 @@ function SearchPageClient() {
             </div>
           ) : showResults ? (
             <section className='mb-12'>
-              {/* 标题 + 聚合开关 */}
-              <div className='mb-8 flex items-center justify-between'>
-                <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                  搜索结果
-                </h2>
-                {/* 聚合开关 */}
-                <label className='flex items-center gap-2 cursor-pointer select-none'>
-                  <span className='text-sm text-gray-700 dark:text-gray-300'>
-                    聚合
-                  </span>
-                  <div className='relative'>
-                    <input
-                      type='checkbox'
-                      className='sr-only peer'
-                      checked={viewMode === 'agg'}
-                      onChange={() =>
-                        setViewMode(viewMode === 'agg' ? 'all' : 'agg')
+              <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200 mb-8'>
+                搜索结果
+              </h2>
+              <div
+                className='justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-5 lg:gap-x-6 2xl:gap-x-8'
+              >
+                {aggregatedResults.map(([mapKey, group]) => (
+                  <div key={`agg-${mapKey}`} className='w-full'>
+                    <VideoCard
+                      from='search'
+                      items={group}
+                      query={
+                        searchQuery.trim() !== group[0].title
+                          ? searchQuery.trim()
+                          : ''
                       }
                     />
-                    <div className='w-9 h-5 bg-gray-300 rounded-full peer-checked:bg-green-500 transition-colors dark:bg-gray-600'></div>
-                    <div className='absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4'></div>
                   </div>
-                </label>
-              </div>
-              <div
-                key={`search-results-${viewMode}`}
-                className='justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8'
-              >
-                {viewMode === 'agg'
-                  ? aggregatedResults.map(([mapKey, group]) => {
-                      return (
-                        <div key={`agg-${mapKey}`} className='w-full'>
-                          <VideoCard
-                            from='search'
-                            items={group}
-                            query={
-                              searchQuery.trim() !== group[0].title
-                                ? searchQuery.trim()
-                                : ''
-                            }
-                          />
-                        </div>
-                      );
-                    })
-                  : searchResults.map((item) => (
-                      <div
-                        key={`all-${item.source}-${item.id}`}
-                        className='w-full'
-                      >
-                        <VideoCard
-                          id={item.id}
-                          title={item.title + ' ' + item.type_name}
-                          poster={item.poster}
-                          episodes={item.episodes.length}
-                          source={item.source}
-                          source_name={item.source_name}
-                          douban_id={item.douban_id?.toString()}
-                          query={
-                            searchQuery.trim() !== item.title
-                              ? searchQuery.trim()
-                              : ''
-                          }
-                          year={item.year}
-                          from='search'
-                          type={item.episodes.length > 1 ? 'tv' : 'movie'}
-                        />
-                      </div>
-                    ))}
-                {searchResults.length === 0 && (
+                ))}
+                {searchError && (
+                  <div className='col-span-full text-center text-red-500 py-8'>
+                    {searchError}
+                  </div>
+                )}
+                {searchResults.length === 0 && !searchError && (
                   <div className='col-span-full text-center text-gray-500 py-8 dark:text-gray-400'>
                     未找到相关结果
                   </div>
@@ -392,7 +320,14 @@ function SearchPageClient() {
                 ))}
               </div>
             </section>
-          ) : null}
+          ) : (
+            // 没有搜索历史，也没有活动搜索
+            <div className='col-span-full text-center text-gray-400 py-16 dark:text-gray-500'>
+              <Search className='w-12 h-12 mx-auto mb-4 opacity-30' />
+              <p className='text-lg'>搜索你想看的电影或电视剧</p>
+              <p className='text-sm mt-2'>支持多资源站聚合搜索</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -414,7 +349,7 @@ function SearchPageClient() {
 
 export default function SearchPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" /></div>}>
       <SearchPageClient />
     </Suspense>
   );

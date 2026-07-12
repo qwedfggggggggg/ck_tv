@@ -28,7 +28,7 @@ function HomeClient() {
   const [hotTvShows, setHotTvShows] = useState<DoubanItem[]>([]);
   const [hotVarietyShows, setHotVarietyShows] = useState<DoubanItem[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [error, setError] = useState<string | null>(null);
   // 收藏夹数据
   type FavoriteItem = {
     id: string;
@@ -72,6 +72,7 @@ function HomeClient() {
         }
       } catch (error) {
         console.error('获取豆瓣数据失败:', error);
+        setError('获取推荐数据失败，请稍后重试');
       } finally {
         setLoading(false);
       }
@@ -147,6 +148,12 @@ function HomeClient() {
             onChange={(value) => setActiveTab(value as 'home' | 'favorites')}
           />
         </div>
+
+        {error && (
+          <div className='max-w-[95%] mx-auto mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'>
+            {error}
+          </div>
+        )}
 
         <div className='max-w-[95%] mx-auto'>
           {activeTab === 'favorites' ? (
@@ -343,7 +350,7 @@ function HomeClient() {
 
 export default function Home() {
   return (
-    <Suspense>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" /></div>}>
       <HomeClient />
     </Suspense>
   );

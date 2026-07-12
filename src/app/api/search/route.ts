@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getCacheTime, getConfig } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
 import { yellowWords } from '@/lib/yellow';
+import { isSourceDead } from '@/lib/dead-source-cache';
 
 export const runtime = 'edge';
 
@@ -39,23 +40,27 @@ export async function GET(request: Request) {
   }
 
   const config = await getConfig();
-  const apiSites = config.SourceConfig.filter((site) => !site.disabled);
+  let apiSites = config.SourceConfig.filter((site) => !site.disabled);
+
+  // 跳过已知失效的源
+  apiSites = apiSites.filter((site) => !isSourceDead(site.key));
+
   const searchPromises = apiSites.map((site) => searchFromApi(site, query));
 
   try {
-    const results = await Promise.all(searchPromises);
-    let flattenedResults = results.flat();
+    const settled = await Promise.allSettled(searchPromises);
+    let results = settled
+      .filter((x): x is PromiseFulfilledResult<any> => x.status === 'fulfilled')
+      .flatMap((x) => x.value);
     if (!config.SiteConfig.DisableYellowFilter) {
-      flattenedResults = flattenedResults.filter((result) => {
-        const typeName = result.type_name || '';
-        return !yellowWords.some((word: string) => typeName.includes(word));
+      results = results.filter((x: { type_name?: string }) => {
+        const typeName = x.type_name || '';
+        return !yellowWords.some((w: string) => typeName.includes(w));
       });
     }
     const cacheTime = await getCacheTime();
-
-    const responseData = { results: flattenedResults };
+    const responseData = { results };
     searchCache.set(query, { data: responseData, expiresAt: now + CACHE_TTL_MS });
-
     return NextResponse.json(responseData, {
       headers: {
         'Cache-Control': `public, max-age=${cacheTime}, s-maxage=${cacheTime}`,
@@ -64,7 +69,7 @@ export async function GET(request: Request) {
         'X-Cache': 'MISS',
       },
     });
-  } catch (error) {
-    return NextResponse.json({ error: '搜索失败' }, { status: 500 });
+  } catch {
+    return NextResponse.json({ results: [] });
   }
 }

@@ -22,6 +22,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
+  Activity,
   ChevronDown,
   ChevronUp,
   FolderOpen,
@@ -1695,6 +1696,7 @@ function AdminPageClient() {
     userConfig: false,
     videoSource: false,
     siteConfig: false,
+    sourceHealth: false,
     categoryConfig: false,
   });
 
@@ -1853,6 +1855,21 @@ function AdminPageClient() {
               <VideoSourceConfig config={config} refreshConfig={fetchConfig} />
             </CollapsibleTab>
 
+            {/* 源健康状态标签 */}
+            <CollapsibleTab
+              title='源健康状态'
+              icon={
+                <Activity
+                  size={20}
+                  className='text-gray-600 dark:text-gray-400'
+                />
+              }
+              isExpanded={expandedTabs.sourceHealth}
+              onToggle={() => toggleTab('sourceHealth')}
+            >
+              <HealthStatus />
+            </CollapsibleTab>
+
             {/* 分类配置标签 */}
             <CollapsibleTab
               title='分类配置'
@@ -1874,9 +1891,85 @@ function AdminPageClient() {
   );
 }
 
+function HealthStatus() {
+  const [data, setData] = useState<{
+    total: number;
+    ok: number;
+    slow: number;
+    dead: number;
+    sources: Array<{ key: string; name: string; status: string; ping: number }>;
+    checkedAt: number;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const check = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const resp = await fetch('/api/health');
+      if (!resp.ok) throw new Error('请求失败');
+      setData(await resp.json());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '检查失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className='p-4 space-y-4'>
+      <div className='flex items-center gap-3'>
+        <button
+          onClick={check}
+          disabled={loading}
+          className='px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50 transition-colors'
+        >
+          {loading ? '检测中...' : '开始检测'}
+        </button>
+        {data && (
+          <div className='flex gap-3 text-sm'>
+            <span className='text-green-600'>正常 {data.ok}</span>
+            <span className='text-yellow-600'>缓慢 {data.slow}</span>
+            <span className='text-red-600'>失效 {data.dead}</span>
+            <span className='text-gray-500'>共 {data.total}</span>
+          </div>
+        )}
+      </div>
+
+      {error && <div className='text-red-500 text-sm'>{error}</div>}
+
+      {data && (
+        <div className='max-h-[500px] overflow-y-auto space-y-1'>
+          {data.sources.map((s) => (
+            <div
+              key={s.key}
+              className='flex items-center justify-between px-3 py-1.5 rounded text-sm bg-gray-50 dark:bg-gray-800/50'
+            >
+              <div className='flex items-center gap-2 min-w-0'>
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${s.status === 'ok' ? 'bg-green-500' : s.status === 'slow' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                <span className='truncate'>{s.name}</span>
+              </div>
+              <span className='text-xs text-gray-400 flex-shrink-0 ml-2'>
+                {s.status === 'ok' ? `${s.ping}ms` : s.status === 'slow' ? `${s.ping}ms` : '超时'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {data && (
+        <p className='text-[10px] text-gray-400'>
+          上次检测：{new Date(data.checkedAt).toLocaleString()}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" /></div>}>
       <AdminPageClient />
     </Suspense>
   );

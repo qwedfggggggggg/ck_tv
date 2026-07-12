@@ -5,25 +5,22 @@
 import { Clover, Film, Home, Search, Sparkles, Star, Tv, Video } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface MobileBottomNavProps {
-  /**
-   * 主动指定当前激活的路径。当未提供时，自动使用 usePathname() 获取的路径。
-   */
   activePath?: string;
 }
 
 const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const lastScrollY = useRef(0);
+  const [visible, setVisible] = useState(true);
 
-  // 构建完整的当前 URL（包含查询参数）
   const currentUrl = searchParams.toString()
     ? `${pathname}?${searchParams.toString()}`
     : pathname;
 
-  // 当前激活路径：优先使用传入的 activePath，否则使用完整 URL
   const currentActive = activePath ?? currentUrl;
 
   const [navItems, setNavItems] = useState([
@@ -50,15 +47,36 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
     }
   }, []);
 
+  useEffect(() => {
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          if (currentScrollY > lastScrollY.current && currentScrollY > 60) {
+            setVisible(false);
+          } else {
+            setVisible(true);
+          }
+          lastScrollY.current = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const isActive = (href: string) => {
     const typeMatch = href.match(/type=([^&]+)/)?.[1];
     const subMatch = href.match(/sub=([^&]+)/)?.[1];
 
-    // 解码URL以进行正确的比较
     const decodedActive = decodeURIComponent(currentActive);
     const decodedItemHref = decodeURIComponent(href);
 
-    // 精确匹配
     if (decodedActive === decodedItemHref) return true;
 
     if (decodedActive.startsWith('/douban') && typeMatch) {
@@ -66,11 +84,9 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
       const itemHasSub = !!subMatch;
 
       if (itemHasSub) {
-        // 菜单项有sub参数，必须精确匹配
         return decodedActive.includes(`type=${typeMatch}`) &&
           decodedActive.includes(`sub=${subMatch}`);
       } else {
-        // 菜单项没有sub参数，只有当前URL也没有sub时才匹配
         return decodedActive.includes(`type=${typeMatch}`) && !activeHasSub;
       }
     }
@@ -80,22 +96,21 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
 
   return (
     <nav
-      className='md:hidden fixed left-0 right-0 z-[600] bg-white/90 backdrop-blur-xl border-t border-gray-200/50 overflow-hidden dark:bg-gray-900/80 dark:border-gray-700/50'
+      className={`md:hidden fixed left-0 right-0 z-[600] bg-white/90 backdrop-blur-xl border-t border-gray-200/50 overflow-hidden dark:bg-gray-900/80 dark:border-gray-700/50 transition-transform duration-300 ${visible ? 'translate-y-0' : 'translate-y-full'
+        }`}
       style={{
-        /* 紧贴视口底部，同时在内部留出安全区高度 */
         bottom: 0,
         paddingBottom: 'env(safe-area-inset-bottom)',
         minHeight: 'calc(3.5rem + env(safe-area-inset-bottom))',
       }}
     >
-      <ul className='flex items-center overflow-x-auto scrollbar-hide'>
+      <ul className='flex items-center justify-around overflow-x-auto scrollbar-hide'>
         {navItems.map((item) => {
           const active = isActive(item.href);
           return (
             <li
               key={item.href}
-              className='flex-shrink-0'
-              style={{ width: '20vw', minWidth: '20vw' }}
+              className='flex-1 min-w-0'
             >
               <Link
                 href={item.href}
