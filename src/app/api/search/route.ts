@@ -45,6 +45,12 @@ export async function GET(request: Request) {
   // 跳过已知失效的源
   apiSites = apiSites.filter((site) => !shouldSkipSource(site.key));
 
+  const sourcesParam = searchParams.get('sources');
+  if (sourcesParam) {
+    const allowedKeys = sourcesParam.split(',').map(s => s.trim());
+    apiSites = apiSites.filter(site => allowedKeys.includes(site.key));
+  }
+
   const searchPromises = apiSites.map((site) => searchFromApi(site, query));
 
   try {

@@ -32,6 +32,7 @@ function SearchPageClient() {
   const [showResults, setShowResults] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [fallbackLabel, setFallbackLabel] = useState<string | null>(null);
 
   const aggregatedResults = useMemo(() => {
     if (!searchResults.length) return [];
@@ -179,15 +180,48 @@ function SearchPageClient() {
     }
   }, [searchResults]);
 
+  async function fetchWithFallback(query: string): Promise<{ results: SearchResult[]; fallbackLabel: string | null }> {
+    const trimmed = query.trim();
+    const attempts: { q: string; label: string }[] = [{ q: trimmed, label: trimmed }];
+
+    const yearMatch = trimmed.match(/^(.+?)\s*(19\d\d|20\d\d)$/);
+    if (yearMatch) {
+      attempts.push({ q: yearMatch[1].trim(), label: `去除年份"${yearMatch[2]}"的模糊搜索` });
+    }
+
+    const subtypeKeywords = ['动漫', '动画', '电影', '电视剧', '综艺', '纪录片'];
+    for (const kw of subtypeKeywords) {
+      if (trimmed.includes(kw)) {
+        attempts.push({ q: trimmed.replace(kw, '').trim(), label: `去除分类"${kw}"的模糊搜索` });
+        break;
+      }
+    }
+
+    if (trimmed.length > 3) {
+      attempts.push({ q: trimmed.slice(0, -1), label: `尝试模糊搜索"${trimmed.slice(0, -1)}"` });
+    }
+
+    for (const attempt of attempts) {
+      try {
+        const resp = await fetch(`/api/search?q=${encodeURIComponent(attempt.q)}`);
+        const data = await resp.json();
+        if (data.results?.length > 0) {
+          const isFallback = attempt.label !== trimmed;
+          return { results: data.results, fallbackLabel: isFallback ? attempt.label : null };
+        }
+      } catch { /* continue */ }
+    }
+
+    return { results: [], fallbackLabel: null };
+  }
+
   const fetchSearchResults = async (query: string) => {
     try {
       setSearchError(null);
       setIsLoading(true);
-      const response = await fetch(
-        `/api/search?q=${encodeURIComponent(query.trim())}`
-      );
-      const data = await response.json();
-      let results = data.results;
+      setFallbackLabel(null);
+      const { results: rawResults, fallbackLabel: fbLabel } = await fetchWithFallback(query);
+      let results = rawResults;
       if (
         typeof window !== 'undefined' &&
         !(window as any).RUNTIME_CONFIG?.DISABLE_YELLOW_FILTER
@@ -224,6 +258,7 @@ function SearchPageClient() {
           }
         })
       );
+      setFallbackLabel(fbLabel);
       setShowResults(true);
     } catch (error) {
       setSearchResults([]);
@@ -293,6 +328,11 @@ function SearchPageClient() {
               <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200 mb-8'>
                 搜索结果
               </h2>
+              {fallbackLabel && (
+                <p className='text-sm text-amber-600 dark:text-amber-400 mb-6 -mt-4'>
+                  未找到精确匹配，{fallbackLabel}
+                </p>
+              )}
               <div
                 className='justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-5 lg:gap-x-6 2xl:gap-x-8'
               >
