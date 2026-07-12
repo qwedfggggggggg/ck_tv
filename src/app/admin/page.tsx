@@ -1929,10 +1929,10 @@ function HealthStatus() {
         </button>
         {data && (
           <div className='flex gap-3 text-sm'>
-            <span className='text-green-600'>正常 {data.ok}</span>
-            <span className='text-yellow-600'>缓慢 {data.slow}</span>
-            <span className='text-red-600'>失效 {data.dead}</span>
-            <span className='text-gray-500'>共 {data.total}</span>
+            <span className='px-2 py-1 rounded bg-green-800 text-green-200'>正常 {data.ok}</span>
+            <span className='px-2 py-1 rounded bg-yellow-800 text-yellow-200'>缓慢 {data.slow}</span>
+            <span className='px-2 py-1 rounded bg-red-800 text-red-200'>失效 {data.dead}</span>
+            <span className='px-2 py-1 rounded bg-gray-700 text-gray-300'>总计 {data.total}</span>
           </div>
         )}
       </div>
