@@ -182,6 +182,10 @@ function PlayPageClient() {
 
   // 换源相关状态
   const [availableSources, setAvailableSources] = useState<SearchResult[]>([]);
+  useEffect(() => {
+    availableSourcesRef.current = availableSources;
+  }, [availableSources]);
+
   const [sourceSearchLoading, setSourceSearchLoading] = useState(false);
   const [sourceSearchError, setSourceSearchError] = useState<string | null>(
     null
@@ -214,6 +218,15 @@ function PlayPageClient() {
   // 电视投屏弹窗状态
   const [isTVCastModalOpen, setIsTVCastModalOpen] = useState(false);
 
+  // 播放失败自动备源
+  const [fallbackAttempt, setFallbackAttempt] = useState(false);
+  const [fallbackTried, setFallbackTried] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    fallbackTriedRef.current = fallbackTried;
+  }, [fallbackTried]);
+
+  const [fallbackMessage, setFallbackMessage] = useState<string | null>(null);
+
   // 换源加载状态
   const [isVideoLoading, setIsVideoLoading] = useState(true);
   const [videoLoadingStage, setVideoLoadingStage] = useState<
@@ -226,6 +239,8 @@ function PlayPageClient() {
 
   const artPlayerRef = useRef<any>(null);
   const artRef = useRef<HTMLDivElement | null>(null);
+  const availableSourcesRef = useRef<SearchResult[]>([]);
+  const fallbackTriedRef = useRef<Set<string>>(new Set());
 
   // -----------------------------------------------------------------------------
   // 工具函数（Utils）
@@ -589,6 +604,45 @@ function PlayPageClient() {
     }
   };
 
+  // 播放失败时自动尝试备选源
+  const autoFallbackOnError = (failedUrl: string) => {
+    const sources = availableSourcesRef.current;
+    const epIndex = currentEpisodeIndexRef.current;
+    const currentDetail = detailRef.current;
+    const tried = fallbackTriedRef.current;
+
+    if (!currentDetail || !sources.length) return;
+    if (tried.size >= 3) return;
+
+    const currentSourceName = currentDetail.source_name;
+    for (const source of sources) {
+      const name = source.source_name;
+      if (name === currentSourceName) continue;
+      if (tried.has(name)) continue;
+
+      const episodes = source.episodes;
+      if (!episodes || epIndex >= episodes.length) continue;
+
+      const candidateUrl = episodes[epIndex];
+      if (!candidateUrl || candidateUrl === failedUrl) continue;
+
+      setFallbackTried(prev => new Set(prev).add(name));
+      setFallbackMessage(`${currentSourceName} 不可用，正在尝试备选源 ${name}...`);
+      setFallbackAttempt(true);
+
+      setCurrentSource(source.source);
+      setCurrentId(source.id);
+      setDetail(source);
+      setVideoUrl(candidateUrl);
+      setVideoCover(source.poster);
+
+      return;
+    }
+
+    setFallbackMessage(null);
+    setError('所有播放源均不可用');
+  };
+
   class CustomHlsJsLoader extends Hls.DefaultConfig.loader {
     constructor(config: any) {
       super(config);
@@ -863,6 +917,11 @@ function PlayPageClient() {
     newTitle: string
   ) => {
     try {
+      // 重置自动备源状态
+      setFallbackTried(new Set());
+      setFallbackMessage(null);
+      setFallbackAttempt(false);
+
       // 显示换源加载状态
       setVideoLoadingStage('sourceChanging');
       setIsVideoLoading(true);
@@ -957,6 +1016,11 @@ function PlayPageClient() {
   // 处理集数切换
   const handleEpisodeChange = (episodeNumber: number) => {
     if (episodeNumber >= 0 && episodeNumber < totalEpisodes) {
+      // 重置自动备源状态
+      setFallbackTried(new Set());
+      setFallbackMessage(null);
+      setFallbackAttempt(false);
+
       // 在更换集数前保存当前播放进度
       if (artPlayerRef.current && artPlayerRef.current.paused) {
         saveCurrentPlayProgress();
@@ -1576,6 +1640,8 @@ function PlayPageClient() {
       // 监听播放器事件
       artPlayerRef.current.on('ready', () => {
         setError(null);
+        setFallbackMessage(null);
+        setFallbackAttempt(false);
 
         // 根据用户设置初始化字幕显示状态
         if (artPlayerRef.current && artPlayerRef.current.subtitle) {
@@ -1678,6 +1744,7 @@ function PlayPageClient() {
         if (artPlayerRef.current.currentTime > 0) {
           return;
         }
+        autoFallbackOnError(videoUrl);
       });
 
       // 监听视频播放结束事件，自动播放下一集
@@ -1980,6 +2047,17 @@ function PlayPageClient() {
                   className='bg-black w-full h-full rounded-xl overflow-hidden shadow-lg'
                   style={{ touchAction: 'none' }}
                 ></div>
+
+                {/* 自动备源提示 */}
+                {fallbackMessage && (
+                  <div className='absolute top-4 left-1/2 -translate-x-1/2 z-[600] bg-yellow-800 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-pulse text-sm'>
+                    <svg className='w-4 h-4 animate-spin' viewBox='0 0 24 24' fill='none'>
+                      <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4' />
+                      <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z' />
+                    </svg>
+                    <span>{fallbackMessage}</span>
+                  </div>
+                )}
 
                 {/* Cloudflare AI 字幕 */}
                 <CloudflareAISubtitle

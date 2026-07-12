@@ -40,6 +40,8 @@ interface EpisodeSelectorProps {
   sourceSearchError?: string | null;
   /** 预计算的测速结果，避免重复测速 */
   precomputedVideoInfo?: Map<string, VideoInfo>;
+  /** 每一集的视频URL数组，用于预检测是否可访问 */
+  episodeUrls?: string[];
 }
 
 /**
@@ -58,6 +60,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   sourceSearchLoading = false,
   sourceSearchError = null,
   precomputedVideoInfo,
+  episodeUrls,
 }) => {
   const router = useRouter();
   const pageCount = Math.ceil(totalEpisodes / episodesPerPage);
@@ -68,6 +71,11 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   );
   const [attemptedSources, setAttemptedSources] = useState<Set<string>>(
     new Set()
+  );
+
+  // 预检测状态 keyed by episode index (0-based)
+  const [verifyStatus, setVerifyStatus] = useState<Map<number, 'checking' | 'alive' | 'dead'>>(
+    new Map()
   );
 
   // 使用 ref 来避免闭包问题
@@ -284,8 +292,26 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   const handleEpisodeClick = useCallback(
     (episodeNumber: number) => {
       onChange?.(episodeNumber);
+
+      // 预检测该集的视频URL是否可访问
+      if (episodeUrls && episodeUrls[episodeNumber]) {
+        const url = episodeUrls[episodeNumber];
+        setVerifyStatus((prev) => new Map(prev).set(episodeNumber, 'checking'));
+        fetch(`/api/verify-url?url=${encodeURIComponent(url)}`)
+          .then((res) => res.json())
+          .then((data) => {
+            setVerifyStatus((prev) =>
+              new Map(prev).set(episodeNumber, data.alive ? 'alive' : 'dead')
+            );
+          })
+          .catch(() => {
+            setVerifyStatus((prev) =>
+              new Map(prev).set(episodeNumber, 'dead')
+            );
+          });
+      }
     },
-    [onChange]
+    [onChange, episodeUrls]
   );
 
   const handleSourceClick = useCallback(
@@ -400,11 +426,13 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
               return episodes;
             })().map((episodeNumber) => {
               const isActive = episodeNumber === value;
+              const episodeIndex = episodeNumber - 1;
+              const status = verifyStatus.get(episodeIndex);
               return (
                 <button
                   key={episodeNumber}
-                  onClick={() => handleEpisodeClick(episodeNumber - 1)}
-                  className={`h-10 flex items-center justify-center text-sm font-medium rounded-md transition-all duration-200 
+                  onClick={() => handleEpisodeClick(episodeIndex)}
+                  className={`h-10 flex items-center justify-center text-sm font-medium rounded-md transition-all duration-200 relative
                     ${
                       isActive
                         ? 'bg-green-500 text-white shadow-lg shadow-green-500/25 dark:bg-green-600'
@@ -412,6 +440,15 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                     }`.trim()}
                 >
                   {episodeNumber}
+                  {status === 'checking' && (
+                    <span className='absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-gray-400 animate-pulse' />
+                  )}
+                  {status === 'alive' && (
+                    <span className='absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-green-400' />
+                  )}
+                  {status === 'dead' && (
+                    <span className='absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-red-400' />
+                  )}
                 </button>
               );
             })}

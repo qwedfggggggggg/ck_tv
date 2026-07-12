@@ -2,6 +2,27 @@ import { API_CONFIG, ApiSite, getConfig } from '@/lib/config';
 import { SearchResult } from '@/lib/types';
 import { cleanHtmlTags } from '@/lib/utils';
 
+export function extractM3u8Urls(text: string): string[] {
+  if (!text) return [];
+  const urls = new Set<string>();
+
+  const patterns = [
+    /\$(https?:\/\/[^"'\s]+?\.m3u8)/g,
+    /(?:^|[^"'\w])(https?:\/\/[^"'\s]+?\.m3u8)/g,
+    /(https?:\/\/[^"'\s<>]+?\.(?:m3u8|ts|mp4))/g,
+  ];
+
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      urls.add(match[1] || match[0]);
+    }
+    if (urls.size > 0) break;
+  }
+
+  return Array.from(urls);
+}
+
 interface ApiSearchItem {
   vod_id: string;
   vod_name: string;
@@ -55,12 +76,11 @@ export async function searchFromApi(
 
       // 使用正则表达式从 vod_play_url 提取 m3u8 链接
       if (item.vod_play_url) {
-        const m3u8Regex = /\$(https?:\/\/[^"'\s]+?\.m3u8)/g;
         // 先用 $$$ 分割
         const vod_play_url_array = item.vod_play_url.split('$$$');
         // 对每个分片做匹配，取匹配到最多的作为结果
         vod_play_url_array.forEach((url: string) => {
-          const matches = url.match(m3u8Regex) || [];
+          const matches = extractM3u8Urls(url);
           if (matches.length > episodes.length) {
             episodes = matches;
           }
@@ -68,7 +88,6 @@ export async function searchFromApi(
       }
 
       episodes = Array.from(new Set(episodes)).map((link: string) => {
-        link = link.substring(1); // 去掉开头的 $
         const parenIndex = link.indexOf('(');
         return parenIndex > 0 ? link.substring(0, parenIndex) : link;
       });
@@ -134,14 +153,11 @@ export async function searchFromApi(
             return pageData.list.map((item: ApiSearchItem) => {
               let episodes: string[] = [];
 
-              // 使用正则表达式从 vod_play_url 提取 m3u8 链接
               if (item.vod_play_url) {
-                const m3u8Regex = /\$(https?:\/\/[^"'\s]+?\.m3u8)/g;
-                episodes = item.vod_play_url.match(m3u8Regex) || [];
+                episodes = extractM3u8Urls(item.vod_play_url);
               }
 
               episodes = Array.from(new Set(episodes)).map((link: string) => {
-                link = link.substring(1); // 去掉开头的 $
                 const parenIndex = link.indexOf('(');
                 return parenIndex > 0 ? link.substring(0, parenIndex) : link;
               });
@@ -190,9 +206,6 @@ export async function searchFromApi(
     return [];
   }
 }
-
-// 匹配 m3u8 链接的正则
-const M3U8_PATTERN = /(https?:\/\/[^"'\s]+?\.m3u8)/g;
 
 export async function getDetailFromApi(
   apiSite: ApiSite,
@@ -252,8 +265,7 @@ export async function getDetailFromApi(
 
   // 如果播放源为空，则尝试从内容中解析 m3u8
   if (episodes.length === 0 && videoDetail.vod_content) {
-    const matches = videoDetail.vod_content.match(M3U8_PATTERN) || [];
-    episodes = matches.map((link: string) => link.replace(/^\$/, ''));
+    episodes = extractM3u8Urls(videoDetail.vod_content);
   }
 
   return {
@@ -294,22 +306,10 @@ async function handleSpecialSourceDetail(
   }
 
   const html = await response.text();
-  let matches: string[] = [];
-
-  if (apiSite.key === 'ffzy') {
-    const ffzyPattern =
-      /\$(https?:\/\/[^"'\s]+?\/\d{8}\/\d+_[a-f0-9]+\/index\.m3u8)/g;
-    matches = html.match(ffzyPattern) || [];
-  }
-
-  if (matches.length === 0) {
-    const generalPattern = /\$(https?:\/\/[^"'\s]+?\.m3u8)/g;
-    matches = html.match(generalPattern) || [];
-  }
+  let matches = extractM3u8Urls(html);
 
   // 去重并清理链接前缀
   matches = Array.from(new Set(matches)).map((link: string) => {
-    link = link.substring(1); // 去掉开头的 $
     const parenIndex = link.indexOf('(');
     return parenIndex > 0 ? link.substring(0, parenIndex) : link;
   });
