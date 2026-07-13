@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 
-import { getCacheTime, getConfig } from '@/lib/config';
-import type { SearchResult } from '@/lib/types';
-import { searchFromApi } from '@/lib/downstream';
-import { yellowWords } from '@/lib/yellow';
-import { shouldSkipSource, recordSearchResult, getReliabilityScore } from '@/lib/dead-source-cache';
 import { searchAllBackends } from '@/lib/backends';
+import { getCacheTime, getConfig } from '@/lib/config';
+import { getReliabilityScore,recordSearchResult, shouldSkipSource } from '@/lib/dead-source-cache';
+import { searchFromApi } from '@/lib/downstream';
+import type { SearchResult } from '@/lib/types';
+import { yellowWords } from '@/lib/yellow';
 
 export const runtime = 'edge';
 
@@ -185,7 +185,8 @@ export async function GET(request: Request) {
 
     if (activeSites.length > 0) {
       allSettled.forEach((r, i) => {
-        const key = activeSites[i].key;
+        const key = activeSites[startIdx + i]?.key;
+        if (!key) return;
         const success = r.status === 'fulfilled' && r.value.length > 0;
         recordSearchResult(key, success);
       });

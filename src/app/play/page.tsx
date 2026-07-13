@@ -8,6 +8,7 @@ import { Heart } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
+import { getBackendPlayInfo } from '@/lib/backends';
 import {
   deleteFavorite,
   deletePlayRecord,
@@ -24,7 +25,6 @@ import {
 import { SearchResult } from '@/lib/types';
 import { processImageUrl } from '@/lib/utils';
 
-import { getBackendPlayInfo } from '@/lib/backends';
 import CloudflareAISubtitle from '@/components/CloudflareAISubtitle';
 import EpisodeSelector from '@/components/EpisodeSelector';
 import PageLayout from '@/components/PageLayout';
@@ -188,25 +188,6 @@ function PlayPageClient() {
   useEffect(() => {
     availableSourcesRef.current = availableSources;
   }, [availableSources]);
-
-  // 跨源合并: 收集每个 episode 在所有匹配源中的 URL (集数差 ≤1 视为同一视频)
-  const mergedEpisodes = useMemo(() => {
-    if (!detail?.episodes) return [];
-    const primaryCount = detail.episodes.length;
-    return detail.episodes.map((ep, idx) => {
-      const alternatives: { sourceName: string; url: string }[] = [];
-      for (const src of availableSources) {
-        if (!src.episodes) continue;
-        if (Math.abs(src.episodes.length - primaryCount) > 1) continue;
-        if (idx >= src.episodes.length) continue;
-        const url = src.episodes[idx]?.url || '';
-        if (url && url !== ep.url) {
-          alternatives.push({ sourceName: src.source_name, url });
-        }
-      }
-      return { name: ep.name, primaryUrl: ep.url, alternatives };
-    });
-  }, [detail, availableSources]);
 
   // episode → 源名称映射 (给 EpisodeSelector 徽章用)
   const episodeSources = useMemo(() => {
@@ -662,10 +643,11 @@ function PlayPageClient() {
 
       let sourcesInfo: SearchResult[];
       if (currentSource && currentId) {
-        sourcesInfo = await fetchSourceDetail(currentSource, currentId);
-        if (sourcesInfo.length === 0) {
-          sourcesInfo = await fetchSourcesData(searchTitle || videoTitle);
-        }
+        const [detailResults, searchResults] = await Promise.all([
+          fetchSourceDetail(currentSource, currentId),
+          fetchSourcesData(searchTitle || videoTitle),
+        ]);
+        sourcesInfo = detailResults.length > 0 ? detailResults : searchResults;
       } else {
         sourcesInfo = await fetchSourcesData(searchTitle || videoTitle);
       }

@@ -12,9 +12,9 @@ import {
   getSearchHistory,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
+import { groupSimilar } from '@/lib/similarity';
 import { SearchResult } from '@/lib/types';
 
-import { groupSimilar } from '@/lib/similarity';
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
 
@@ -202,7 +202,7 @@ function SearchPageClient() {
 
     for (const attempt of attempts) {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
       try {
         const resp = await fetch(`/api/search?q=${encodeURIComponent(attempt.q)}&batch=1`, {
           signal: controller.signal,
