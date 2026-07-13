@@ -9,14 +9,12 @@ export default function PasswordGate({ children }: { children: React.ReactNode }
   const [authed, setAuthed] = useState(false);
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY) || sessionStorage.getItem('_pw');
     if (saved === PASSWORD) {
       setAuthed(true);
     }
-    setLoading(false);
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -29,8 +27,6 @@ export default function PasswordGate({ children }: { children: React.ReactNode }
       setInput('');
     }
   };
-
-  if (loading) return null;
 
   if (!authed) {
     return (
