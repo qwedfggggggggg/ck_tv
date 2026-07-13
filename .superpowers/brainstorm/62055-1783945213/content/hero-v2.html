@@ -1,0 +1,191 @@
+<h2>SYTV 新版布局 — 细化版</h2>
+<p class="subtitle">参考了腾讯视频/爱奇艺等国内主流平台的设计模式</p>
+
+<div style="border:1px solid #333;border-radius:12px;overflow:hidden;max-width:700px">
+
+  <!-- 顶部渐变装饰条 -->
+  <div style="height:3px;background:linear-gradient(90deg,#8b5cf6,#ec4899,#f97316)"></div>
+
+  <!-- ===== 顶部导航栏 ===== -->
+  <div style="display:flex;align-items:center;padding:0 16px;height:52px;background:#1a1a1a;border-bottom:1px solid #222;gap:0">
+
+    <!-- Logo -->
+    <span style="font-weight:800;font-size:18px;background:linear-gradient(135deg,#8b5cf6,#f97316);-webkit-background-clip:text;color:transparent;white-space:nowrap;margin-right:24px">SYTV</span>
+
+    <!-- 分类导航 -->
+    <div style="display:flex;gap:0;font-size:13px;flex-shrink:0">
+      <span style="padding:6px 12px;color:#fff;border-bottom:2px solid #a78bfa;font-weight:600">首页</span>
+
+      <!-- 影视大类 -->
+      <div style="padding:6px 12px;color:#888;display:flex;align-items:center;gap:4px">
+        影视
+        <span style="font-size:9px;color:#555">▾</span>
+      </div>
+
+      <!-- 剧集 -->
+      <div style="padding:6px 12px;color:#888;display:flex;align-items:center;gap:4px">
+        剧集
+        <span style="font-size:9px;color:#555">▾</span>
+      </div>
+
+      <span style="padding:6px 12px;color:#888">综艺</span>
+
+      <span style="padding:6px 12px;color:#888">动漫</span>
+
+      <span style="padding:6px 12px;color:#888">纪录片</span>
+
+      <!-- B站短视频 -->
+      <div style="padding:6px 12px;color:#888;display:flex;align-items:center;gap:4px">
+        <span style="font-size:10px;color:#e6567a">b</span>
+        短视频
+      </div>
+    </div>
+
+    <!-- 中间弹性空间 -->
+    <div style="flex:1"></div>
+
+    <!-- 搜索框 -->
+    <div style="display:flex;align-items:center;background:#2a2a2a;border-radius:20px;padding:0 12px;height:32px;max-width:200px;flex:1">
+      <span style="color:#666;font-size:12px;margin-right:6px">🔍</span>
+      <span style="color:#555;font-size:12px">搜索影视/综艺/动漫...</span>
+    </div>
+
+    <!-- 用户头像 -->
+    <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#ec4899);margin-left:12px;flex-shrink:0"></div>
+  </div>
+
+  <!-- ===== Banner 焦点图（最近播放/收藏） ===== -->
+  <div style="height:220px;background:linear-gradient(135deg,#2d1b69,#1a1a2e);display:flex;align-items:flex-end;padding:0;position:relative">
+    <!-- 渐变遮罩 -->
+    <div style="position:absolute;bottom:0;left:0;right:0;height:60%;background:linear-gradient(transparent,#1a1a1a)"></div>
+    <!-- 内容 -->
+    <div style="position:relative;z-index:1;padding:20px;width:100%">
+      <!-- 标签行 -->
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <span style="font-size:10px;background:linear-gradient(135deg,#8b5cf6,#ec4899);padding:2px 8px;border-radius:10px;color:#fff">📺 继续观看</span>
+        <span style="font-size:10px;background:rgba(255,255,255,0.1);padding:2px 8px;border-radius:10px;color:#aaa">❤️ 我的收藏</span>
+      </div>
+      <!-- 标题 -->
+      <div style="font-size:20px;font-weight:bold;margin-bottom:4px">我住在凡尔赛的日子</div>
+      <div style="font-size:11px;color:#aaa;margin-bottom:10px">2026 · 剧情 · 法国 · 已观看至 第8集</div>
+      <!-- 按钮 -->
+      <div style="display:flex;gap:10px;align-items:center">
+        <div style="background:linear-gradient(135deg,#8b5cf6,#ec4899);color:#fff;padding:7px 20px;border-radius:8px;font-size:12px;font-weight:600">▶ 继续播放</div>
+        <div style="width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;font-size:14px;color:rgba(255,255,255,0.7)">+</div>
+      </div>
+    </div>
+    <!-- banner 指示点 -->
+    <div style="position:absolute;bottom:10px;right:16px;display:flex;gap:4px">
+      <div style="width:16px;height:4px;border-radius:2px;background:linear-gradient(90deg,#8b5cf6,#ec4899)"></div>
+      <div style="width:4px;height:4px;border-radius:2px;background:#555"></div>
+      <div style="width:4px;height:4px;border-radius:2px;background:#555"></div>
+      <div style="width:4px;height:4px;border-radius:2px;background:#555"></div>
+    </div>
+  </div>
+
+  <!-- ===== 内容区 ===== -->
+  <div style="background:#1a1a1a;padding:16px">
+
+    <!-- 继续观看 -->
+    <div style="margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:14px;font-weight:bold;display:flex;align-items:center;gap:6px">
+          <span style="color:#a78bfa">▶</span> 继续观看
+        </span>
+        <span style="font-size:11px;color:#888">更多 →</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <div><div style="aspect-ratio:2/3;background:#2a2a2a;border-radius:6px;margin-bottom:4px"></div><div style="height:8px;width:85%;background:#2a2a2a;border-radius:4px;margin-bottom:3px"></div><div style="display:flex;gap:4px"><span style="font-size:9px;color:#a78bfa">进度 65%</span></div></div>
+        <div><div style="aspect-ratio:2/3;background:#2a2a2a;border-radius:6px;margin-bottom:4px"></div><div style="height:8px;width:85%;background:#2a2a2a;border-radius:4px;margin-bottom:3px"></div><div style="display:flex;gap:4px"><span style="font-size:9px;color:#a78bfa">进度 30%</span></div></div>
+        <div><div style="aspect-ratio:2/3;background:#2a2a2a;border-radius:6px;margin-bottom:4px"></div><div style="height:8px;width:85%;background:#2a2a2a;border-radius:4px;margin-bottom:3px"></div><div style="display:flex;gap:4px"><span style="font-size:9px;color:#a78bfa">进度 80%</span></div></div>
+        <div><div style="aspect-ratio:2/3;background:#2a2a2a;border-radius:6px;margin-bottom:4px"></div><div style="height:8px;width:85%;background:#2a2a2a;border-radius:4px;margin-bottom:3px"></div><div style="display:flex;gap:4px"><span style="font-size:9px;color:#a78bfa">进度 12%</span></div></div>
+      </div>
+    </div>
+
+    <!-- 影视·热门推荐（带评级） -->
+    <div style="margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:14px;font-weight:bold">🔥 热门推荐</span>
+        <span style="font-size:11px;color:#888">更多 →</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <div><div style="aspect-ratio:2/3;background:#2a2a2a;border-radius:6px;margin-bottom:4px"></div><div style="height:8px;width:85%;background:#2a2a2a;border-radius:4px;margin-bottom:3px"></div><div style="display:flex;gap:6px;align-items:center"><span style="font-size:10px;color:#f59e0b">★ 8.5</span><span style="font-size:9px;color:#555">2026</span></div></div>
+        <div><div style="aspect-ratio:2/3;background:#2a2a2a;border-radius:6px;margin-bottom:4px"></div><div style="height:8px;width:85%;background:#2a2a2a;border-radius:4px;margin-bottom:3px"></div><div style="display:flex;gap:6px;align-items:center"><span style="font-size:10px;color:#f59e0b">★ 7.2</span><span style="font-size:9px;color:#555">2026</span></div></div>
+        <div><div style="aspect-ratio:2/3;background:#2a2a2a;border-radius:6px;margin-bottom:4px"></div><div style="height:8px;width:85%;background:#2a2a2a;border-radius:4px;margin-bottom:3px"></div><div style="display:flex;gap:6px;align-items:center"><span style="font-size:10px;color:#f59e0b">★ 9.1</span><span style="font-size:9px;color:#555">2026</span></div></div>
+        <div><div style="aspect-ratio:2/3;background:#2a2a2a;border-radius:6px;margin-bottom:4px"></div><div style="height:8px;width:85%;background:#2a2a2a;border-radius:4px;margin-bottom:3px"></div><div style="display:flex;gap:6px;align-items:center"><span style="font-size:10px;color:#f59e0b">★ 6.8</span><span style="font-size:9px;color:#555">2026</span></div></div>
+      </div>
+    </div>
+
+    <!-- 热播剧集·分地区 -->
+    <div style="margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:14px;font-weight:bold">📺 热播剧集</span>
+        <span style="font-size:11px;color:#888">更多 →</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <span style="font-size:10px;padding:3px 10px;border-radius:10px;background:linear-gradient(135deg,#8b5cf6,#ec4899);color:#fff">全部</span>
+        <span style="font-size:10px;padding:3px 10px;border-radius:10px;background:#2a2a2a;color:#888">国产</span>
+        <span style="font-size:10px;padding:3px 10px;border-radius:10px;background:#2a2a2a;color:#888">欧美</span>
+        <span style="font-size:10px;padding:3px 10px;border-radius:10px;background:#2a2a2a;color:#888">日韩</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <div><div style="aspect-ratio:2/3;background:#2a2a2a;border-radius:6px;margin-bottom:4px"></div><div style="height:8px;width:85%;background:#2a2a2a;border-radius:4px;margin-bottom:3px"></div><div style="font-size:9px;color:#888">国产·36集</div></div>
+        <div><div style="aspect-ratio:2/3;background:#2a2a2a;border-radius:6px;margin-bottom:4px"></div><div style="height:8px;width:85%;background:#2a2a2a;border-radius:4px;margin-bottom:3px"></div><div style="font-size:9px;color:#888">美剧·8集</div></div>
+        <div><div style="aspect-ratio:2/3;background:#2a2a2a;border-radius:6px;margin-bottom:4px"></div><div style="height:8px;width:85%;background:#2a2a2a;border-radius:4px;margin-bottom:3px"></div><div style="font-size:9px;color:#888">日剧·12集</div></div>
+        <div><div style="aspect-ratio:2/3;background:#2a2a2a;border-radius:6px;margin-bottom:4px"></div><div style="height:8px;width:85%;background:#2a2a2a;border-radius:4px;margin-bottom:3px"></div><div style="font-size:9px;color:#888">韩剧·16集</div></div>
+      </div>
+    </div>
+
+    <!-- B站短视频 -->
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:14px;font-weight:bold;display:flex;align-items:center;gap:4px">
+          <span style="font-size:12px;color:#e6567a">●</span> B站精选
+        </span>
+        <span style="font-size:11px;color:#888">更多 →</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+        <div>
+          <div style="aspect-ratio:16/9;background:#2a2a2a;border-radius:8px;margin-bottom:4px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#444">▶</div>
+          <div style="height:8px;width:90%;background:#2a2a2a;border-radius:4px;margin-bottom:2px"></div>
+          <div style="font-size:9px;color:#888">👁 128万次播放 · 3天前</div>
+        </div>
+        <div>
+          <div style="aspect-ratio:16/9;background:#2a2a2a;border-radius:8px;margin-bottom:4px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#444">▶</div>
+          <div style="height:8px;width:90%;background:#2a2a2a;border-radius:4px;margin-bottom:2px"></div>
+          <div style="font-size:9px;color:#888">👁 56万次播放 · 5天前</div>
+        </div>
+        <div>
+          <div style="aspect-ratio:16/9;background:#2a2a2a;border-radius:8px;margin-bottom:4px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#444">▶</div>
+          <div style="height:8px;width:90%;background:#2a2a2a;border-radius:4px;margin-bottom:2px"></div>
+          <div style="font-size:9px;color:#888">👁 230万次播放 · 1周前</div>
+        </div>
+        <div>
+          <div style="aspect-ratio:16/9;background:#2a2a2a;border-radius:8px;margin-bottom:4px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#444">▶</div>
+          <div style="height:8px;width:90%;background:#2a2a2a;border-radius:4px;margin-bottom:2px"></div>
+          <div style="font-size:9px;color:#888">👁 89万次播放 · 2天前</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px">
+  <h3>这个版本感觉如何？</h3>
+  <div class="options">
+    <div class="option" data-choice="good" onclick="toggleSelect(this)">
+      <div class="letter">✓</div>
+      <div class="content">
+        <h3>很好，可以继续</h3>
+        <p>进入下一阶段</p>
+      </div>
+    </div>
+    <div class="option" data-choice="tweak" onclick="toggleSelect(this)">
+      <div class="letter">✎</div>
+      <div class="content">
+        <h3>还需要调整</h3>
+        <p>我来补充想法</p>
+      </div>
+    </div>
+  </div>
+</div>

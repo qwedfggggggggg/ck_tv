@@ -15,6 +15,15 @@
 
 :root {
   --foreground-rgb: 255, 255, 255;
+  --sytv-bg: #1a1a1a;
+  --sytv-gradient: linear-gradient(135deg, #8b5cf6, #ec4899, #f97316);
+  --sytv-gradient-1: #8b5cf6;
+  --sytv-gradient-2: #ec4899;
+  --sytv-gradient-3: #f97316;
+  --sytv-surface: #1e1e1e;
+  --sytv-border: #2a2a2a;
+  --sytv-text-secondary: #888;
+  --sytv-accent: #a78bfa;
 }
 
 html,
@@ -30,16 +39,12 @@ body {
 }
 
 html:not(.dark) body {
-  background: linear-gradient(
-    180deg,
-    #e6f3fb 0%,
-    #eaf3f7 18%,
-    #f7f7f3 38%,
-    #e9ecef 60%,
-    #dbe3ea 80%,
-    #d3dde6 100%
-  );
+  background: #f5f5f5;
   background-attachment: fixed;
+}
+
+html.dark body {
+  background: var(--sytv-bg);
 }
 
 /* 自定义滚动条样式 */

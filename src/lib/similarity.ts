@@ -11,9 +11,9 @@ export function trigramSimilarity(a: string, b: string): number {
 }
 
 export interface GroupOptions {
-  threshold?: number;      // default 0.85
-  requireSameYear?: boolean; // default true
-  requireSameType?: boolean; // default true (movie=1ep vs tv=multi-ep)
+  threshold?: number;
+  requireSameYear?: boolean;
+  requireSameType?: boolean;
 }
 
 export function groupSimilar<T extends { title: string; year?: string; episodes?: any[] }>(

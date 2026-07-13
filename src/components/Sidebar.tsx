@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Clapperboard, Clover, Film, Heart, Home, Menu, Search, Sparkles, Star, Tv, Video } from 'lucide-react';
+import { Clapperboard, Clover, Compass, Film, Heart, Home, Menu, Search, Sparkles, Star, Tv, Video } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -149,6 +149,11 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       icon: Video,
       label: '纪录片',
       href: '/douban?type=tv&sub=tv_documentary',
+    },
+    {
+      icon: Compass,
+      label: '浏览',
+      href: '/browse',
     },
     {
       icon: Heart,

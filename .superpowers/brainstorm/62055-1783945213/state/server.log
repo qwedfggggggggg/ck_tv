@@ -1,0 +1,21 @@
+{"type":"server-started","port":63279,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:63279/?key=f4df589c3c368d8cd95df4f9dad132c36f8340026d8477f6ec53b9c13125d0df","screen_dir":"/Users/gehaoran/cktv/.superpowers/brainstorm/62055-1783945213/content","state_dir":"/Users/gehaoran/cktv/.superpowers/brainstorm/62055-1783945213/state","idle_timeout_ms":14400000}
+{"type":"screen-added","file":"/Users/gehaoran/cktv/.superpowers/brainstorm/62055-1783945213/content/color-schemes.html"}
+{"source":"user-event","type":"click","text":"B. 深蓝灰 · 渐变紫蓝\n      \n        \n        \n        \n      \n      深蓝灰底 + 靛蓝→青色渐变，Disney+/HBO 风格，沉稳科技感\n      \n        优点专业感强不刺眼\n        缺点偏冷淡","choice":"b","id":null,"timestamp":1783945244326}
+{"source":"user-event","type":"click","text":"A. 极黑 · 暖橙红\n      \n        \n        \n        \n        \n      \n      纯黑底 + 橙色渐变强调，类似 Netflix 风格，视觉冲击强\n      \n        优点内容最突出能耗低(OLED)\n        缺点较常见","choice":"a","id":null,"timestamp":1783945246272}
+{"source":"user-event","type":"click","text":"C. 暖深灰 · 紫粉橙渐变\n      \n        \n        \n      \n      暖灰底 + 紫→粉→橙三色渐变，2026 年趋势，年轻活力\n      \n        优点独特性强时尚前卫\n        缺点渐变需节制使用","choice":"c","id":null,"timestamp":1783945261647}
+{"source":"user-event","type":"click","text":"B. 深蓝灰 · 渐变紫蓝\n      \n        \n        \n        \n      \n      深蓝灰底 + 靛蓝→青色渐变，Disney+/HBO 风格，沉稳科技感\n      \n        优点专业感强不刺眼\n        缺点偏冷淡","choice":"b","id":null,"timestamp":1783945263041}
+{"source":"user-event","type":"click","text":"C. 暖深灰 · 紫粉橙渐变\n      \n        \n        \n      \n      暖灰底 + 紫→粉→橙三色渐变，2026 年趋势，年轻活力\n      \n        优点独特性强时尚前卫\n        缺点渐变需节制使用","choice":"c","id":null,"timestamp":1783945264487}
+{"source":"user-event","type":"click","text":"B. 深蓝灰 · 渐变紫蓝\n      \n        \n        \n        \n      \n      深蓝灰底 + 靛蓝→青色渐变，Disney+/HBO 风格，沉稳科技感\n      \n        优点专业感强不刺眼\n        缺点偏冷淡","choice":"b","id":null,"timestamp":1783945265979}
+{"source":"user-event","type":"click","text":"A. 极黑 · 暖橙红\n      \n        \n        \n        \n        \n      \n      纯黑底 + 橙色渐变强调，类似 Netflix 风格，视觉冲击强\n      \n        优点内容最突出能耗低(OLED)\n        缺点较常见","choice":"a","id":null,"timestamp":1783945276006}
+{"type":"screen-added","file":"/Users/gehaoran/cktv/.superpowers/brainstorm/62055-1783945213/content/layout.html"}
+{"source":"user-event","type":"click","text":"3. 大 Banner 焦点图布局\n      \n        \n          \n        \n        \n          \n          \n            \n            \n            \n          \n        \n      \n      顶部大横幅推荐 + 分类内容流，类似 Disney+/HBO，视觉冲击强","choice":"hero","id":null,"timestamp":1783945347943}
+{"type":"screen-added","file":"/Users/gehaoran/cktv/.superpowers/brainstorm/62055-1783945213/content/hero-detail.html"}
+{"source":"user-event","type":"click","text":"✎\n      \n        还不错，但想改一些\n        我来说具体想法","choice":"tweak","id":null,"timestamp":1783945387107}
+{"source":"user-event","type":"click","text":"✎\n      \n        还不错，但想改一些\n        我来说具体想法","choice":"tweak","id":null,"timestamp":1783945389855}
+{"type":"screen-added","file":"/Users/gehaoran/cktv/.superpowers/brainstorm/62055-1783945213/content/hero-v2.html"}
+{"type":"screen-updated","file":"/Users/gehaoran/cktv/.superpowers/brainstorm/62055-1783945213/content/hero-v2.html"}
+{"type":"screen-updated","file":"/Users/gehaoran/cktv/.superpowers/brainstorm/62055-1783945213/content/hero-v2.html"}
+{"type":"screen-updated","file":"/Users/gehaoran/cktv/.superpowers/brainstorm/62055-1783945213/content/hero-v2.html"}
+{"type":"screen-updated","file":"/Users/gehaoran/cktv/.superpowers/brainstorm/62055-1783945213/content/hero-v2.html"}
+{"type":"screen-updated","file":"/Users/gehaoran/cktv/.superpowers/brainstorm/62055-1783945213/content/hero-v2.html"}
+{"type":"screen-added","file":"/Users/gehaoran/cktv/.superpowers/brainstorm/62055-1783945213/content/design-doc.html"}

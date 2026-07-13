@@ -12,9 +12,12 @@ export async function GET(request: Request) {
   }
 
   try {
+    const referer = imageUrl.includes('hdslb.com')
+      ? 'https://www.bilibili.com/'
+      : 'https://movie.douban.com/';
     const imageResponse = await fetch(imageUrl, {
       headers: {
-        Referer: 'https://movie.douban.com/',
+        Referer: referer,
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
       },

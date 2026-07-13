@@ -13,7 +13,6 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import { SearchResult } from '@/lib/types';
-import { yellowWords } from '@/lib/yellow';
 
 import { groupSimilar } from '@/lib/similarity';
 import PageLayout from '@/components/PageLayout';
@@ -144,7 +143,7 @@ function SearchPageClient() {
 
   useEffect(() => {
     if (!searchResults.length) return;
-    const missing = searchResults.filter(r => !r.douban_id);
+    const missing = searchResults.filter(r => !r.douban_id && r.douban_id !== 0);
     if (!missing.length) return;
 
     const unique = new Map<string, SearchResult>();
@@ -169,7 +168,7 @@ function SearchPageClient() {
             const found = match || data.list[0];
             if (found?.id) {
               setSearchResults(prev => prev.map(r =>
-                r.title.toLowerCase().trim() === key && !r.douban_id
+                r.title.toLowerCase().trim() === key && !r.douban_id && r.douban_id !== 0
                   ? { ...r, douban_id: parseInt(found.id) }
                   : r
               ));
@@ -180,7 +179,7 @@ function SearchPageClient() {
     }
   }, [searchResults]);
 
-  async function fetchWithFallback(query: string): Promise<{ results: SearchResult[]; fallbackLabel: string | null }> {
+  async function fetchWithFallback(query: string): Promise<{ results: SearchResult[]; fallbackLabel: string | null; hasMore: boolean }> {
     const trimmed = query.trim();
     const attempts: { q: string; label: string }[] = [{ q: trimmed, label: trimmed }];
 
@@ -201,18 +200,26 @@ function SearchPageClient() {
       attempts.push({ q: trimmed.slice(0, -1), label: `尝试模糊搜索"${trimmed.slice(0, -1)}"` });
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     for (const attempt of attempts) {
       try {
-        const resp = await fetch(`/api/search?q=${encodeURIComponent(attempt.q)}`);
+        const resp = await fetch(`/api/search?q=${encodeURIComponent(attempt.q)}&batch=1`, {
+          signal: controller.signal,
+        });
         const data = await resp.json();
         if (data.results?.length > 0) {
+          clearTimeout(timeoutId);
           const isFallback = attempt.label !== trimmed;
-          return { results: data.results, fallbackLabel: isFallback ? attempt.label : null };
+          return { results: data.results, fallbackLabel: isFallback ? attempt.label : null, hasMore: data.hasMore ?? false };
         }
       } catch { /* continue */ }
     }
 
-    return { results: [], fallbackLabel: null };
+    clearTimeout(timeoutId);
+
+    return { results: [], fallbackLabel: null, hasMore: false };
   }
 
   const fetchSearchResults = async (query: string) => {
@@ -220,17 +227,8 @@ function SearchPageClient() {
       setSearchError(null);
       setIsLoading(true);
       setFallbackLabel(null);
-      const { results: rawResults, fallbackLabel: fbLabel } = await fetchWithFallback(query);
-      let results = rawResults;
-      if (
-        typeof window !== 'undefined' &&
-        !(window as any).RUNTIME_CONFIG?.DISABLE_YELLOW_FILTER
-      ) {
-        results = results.filter((result: SearchResult) => {
-          const typeName = result.type_name || '';
-          return !yellowWords.some((word: string) => typeName.includes(word));
-        });
-      }
+      const { results: rawResults, fallbackLabel: fbLabel, hasMore } = await fetchWithFallback(query);
+      const results = rawResults;
       setSearchResults(
         results.sort((a: SearchResult, b: SearchResult) => {
           // 优先排序：标题与搜索词完全一致的排在前面
@@ -260,6 +258,25 @@ function SearchPageClient() {
       );
       setFallbackLabel(fbLabel);
       setShowResults(true);
+
+      // Progressive remaining batches
+      if (hasMore) {
+        let batch = 2;
+        let more = true;
+        while (more) {
+          try {
+            const resp = await fetch(`/api/search?q=${encodeURIComponent(query)}&batch=${batch}`, {
+              signal: AbortSignal.timeout(10000),
+            });
+            const data = await resp.json();
+            if (data.results?.length) {
+              setSearchResults(prev => [...prev, ...data.results]);
+            }
+            more = data.hasMore;
+            batch++;
+          } catch { break; }
+        }
+      }
     } catch (error) {
       setSearchResults([]);
       setSearchError('搜索失败，请检查网络后重试');

@@ -35,11 +35,11 @@ export function getImageProxyUrl(): string | null {
 export function processImageUrl(originalUrl: string): string {
   if (!originalUrl) return originalUrl;
 
-  // 检测是否为豆瓣图片（doubanio.com 域名有防盗链保护）
-  const isDoubanImage = originalUrl.includes('doubanio.com');
+  // 检测是否有防盗链保护的图片域名
+  const isProtectedImage = originalUrl.includes('doubanio.com') || originalUrl.includes('hdslb.com');
 
-  // 如果是豆瓣图片，使用内置图片代理API绕过防盗链
-  if (isDoubanImage) {
+  // 如果有防盗链保护，使用内置图片代理API绕过
+  if (isProtectedImage) {
     return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
   }
 
