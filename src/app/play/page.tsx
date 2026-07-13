@@ -246,7 +246,8 @@ function PlayPageClient() {
   const availableSourcesRef = useRef<SearchResult[]>([]);
   const fallbackTriedRef = useRef<Set<string>>(new Set());
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const PLAY_LOAD_TIMEOUT = 12000;
+  const hlsLevelsRef = useRef<{ height: number; name: string; index: number }[]>([]);
+  const PLAY_LOAD_TIMEOUT = 6000;
 
   // 更新视频地址
   const updateVideoUrl = (
@@ -594,8 +595,36 @@ function PlayPageClient() {
         setLoading(false);
         return;
       }
-      // Handle backend sources (Bilibili/YouTube/Archive) directly
+      // Handle backend sources (Bilibili/YouTube/Archive/Fanqie) directly
       if (currentSource && currentSource.startsWith('backend:')) {
+        // Fanqie short drama: fetch episodes from server API
+        if (currentSource === 'backend:fanqie') {
+          setLoadingMessage('🎬 正在获取短剧播放地址...');
+          setLoadingStage('fetching');
+          try {
+            const bookId = currentId.replace(/^[^:]+:/, '');
+            const resp = await fetch(`/api/fanqie-detail?book_id=${bookId}`);
+            if (!resp.ok) throw new Error('获取短剧详情失败');
+            const fanqieDetail: SearchResult = await resp.json();
+            if (!fanqieDetail.episodes || fanqieDetail.episodes.length === 0) {
+              throw new Error('未找到可播放的剧集');
+            }
+            setDetail(fanqieDetail);
+            setAvailableSources([fanqieDetail]);
+            setVideoTitle(fanqieDetail.title || videoTitle);
+            setVideoCover(fanqieDetail.poster);
+            setVideoUrl(fanqieDetail.episodes[0].url);
+            setIsVideoLoading(false);
+            setLoadingStage('ready');
+            setTimeout(() => setLoading(false), 500);
+            return;
+          } catch (err) {
+            setError(err instanceof Error ? err.message : '获取短剧失败');
+            setLoading(false);
+            return;
+          }
+        }
+
         const idWithoutPrefix = currentId.replace(/^[^:]+:/, '');
         const nameMap: Record<string, string> = {
           'backend:bilibili': '哔哩哔哩',
@@ -1206,34 +1235,17 @@ function PlayPageClient() {
       autoFallbackOnError(videoUrl);
     }, PLAY_LOAD_TIMEOUT);
 
-    // 检测是否为WebKit浏览器
-    const isWebkit =
-      typeof window !== 'undefined' &&
-      typeof (window as any).webkitConvertPointFromNodeToPage === 'function';
-
-    // 非WebKit浏览器且播放器已存在，使用switch方法切换
-    if (!isWebkit && artPlayerRef.current) {
-      artPlayerRef.current.switch = videoUrl;
-      artPlayerRef.current.title = `${videoTitle} - 第${currentEpisodeIndex + 1
-        }集`;
+    // 播放器已存在 → 复用实例，只换 video URL
+    if (artPlayerRef.current) {
+      if (videoUrl !== artPlayerRef.current.url) {
+        artPlayerRef.current.switch = videoUrl;
+      }
+      artPlayerRef.current.title = `${videoTitle} - 第${currentEpisodeIndex + 1}集`;
       artPlayerRef.current.poster = videoCover;
       if (artPlayerRef.current?.video) {
-        ensureVideoSource(
-          artPlayerRef.current.video as HTMLVideoElement,
-          videoUrl
-        );
+        ensureVideoSource(artPlayerRef.current.video as HTMLVideoElement, videoUrl);
       }
       return;
-    }
-
-    // WebKit浏览器或首次创建：销毁之前的播放器实例并创建新的
-    if (artPlayerRef.current) {
-      if (artPlayerRef.current.video && artPlayerRef.current.video.hls) {
-        artPlayerRef.current.video.hls.destroy();
-      }
-      // 销毁播放器实例
-      artPlayerRef.current.destroy();
-      artPlayerRef.current = null;
     }
 
     try {
@@ -1305,10 +1317,13 @@ function PlayPageClient() {
               /* 点播模式 — 关掉 LL-HLS（它会主动限制缓冲） */
               lowLatencyMode: false,
 
-              /* 缓冲调大 — 2x 时消耗翻倍，需要更多 margin */
-              maxBufferLength: 180,
+              /* 首屏优先 — 缓冲区适中即可 */
+              maxBufferLength: 30,
               backBufferLength: 30,
-              maxBufferSize: 200 * 1000 * 1000,
+              maxBufferSize: 50 * 1000 * 1000,
+
+              /* 从 720p 起步，不爬最低画质 */
+              startLevel: 1,
 
               /* 画质控制 */
               capLevelToPlayerSize: true,
@@ -1325,21 +1340,34 @@ function PlayPageClient() {
             hls.attachMedia(video);
             video.hls = hls;
 
-            let level480p = -1;
-            let level720p = -1;
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
               const levels = hls.levels;
-              for (let i = 0; i < levels.length; i++) {
-                const h = levels[i].height;
-                if (h <= 540) level480p = level480p === -1 ? i : level480p;
-                if (h <= 768) level720p = level720p === -1 ? i : level720p;
-              }
-              const capForRate = (_rate: number) => {
-                hls.autoLevelCapping = -1;
-                hls.currentLevel = -1;
-              };
-              capForRate(video.playbackRate);
-              video.addEventListener('ratechange', () => capForRate(video.playbackRate));
+              hlsLevelsRef.current = levels.map((l: any, i: number) => ({
+                height: l.height,
+                name: l.height >= 1080 ? '1080P' : l.height >= 720 ? '720P' : l.height >= 480 ? '480P' : `${l.height}P`,
+                index: i,
+              }));
+              // 向 settings 动态推送画质选择器
+              try {
+                const selectorItems = [
+                  { html: '自动', default: true },
+                  ...hlsLevelsRef.current.map((l) => ({ html: l.name })),
+                ];
+                artPlayerRef.current?.setting?.add({
+                  name: '画质',
+                  html: '画质',
+                  icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M3 7h18v10H3z"/><path d="M7 10l3 3-3 3"/></svg>',
+                  selector: selectorItems,
+                  onSelect: function (item: any) {
+                    if (item.html === '自动') {
+                      hls.currentLevel = -1;
+                    } else {
+                      const found = hlsLevelsRef.current.find((l) => l.name === item.html);
+                      if (found) hls.currentLevel = found.index;
+                    }
+                  },
+                });
+              } catch (_) { /* ignore */ }
             });
 
             ensureVideoSource(video, url);
@@ -1576,8 +1604,7 @@ function PlayPageClient() {
           if (
             Math.abs(
               artPlayerRef.current.playbackRate - lastPlaybackRateRef.current
-            ) > 0.01 &&
-            isWebkit
+            ) > 0.01
           ) {
             artPlayerRef.current.playbackRate = lastPlaybackRateRef.current;
           }
@@ -1667,6 +1694,22 @@ function PlayPageClient() {
         // 更新当前播放时间（用于 AI 字幕同步）
         if (artPlayerRef.current) {
           setCurrentPlayTime(artPlayerRef.current.currentTime || 0);
+        }
+        // 当播放进度超过 80% 时，预加载下一集
+        const player = artPlayerRef.current;
+        if (player && player.duration > 0) {
+          const pct = player.currentTime / player.duration;
+          if (pct > 0.8 && !(window as any).__nextEpPreloaded) {
+            const d = detailRef.current;
+            const idx = currentEpisodeIndexRef.current;
+            if (d && d.episodes && idx < d.episodes.length - 1) {
+              const nextUrl = d.episodes[idx + 1]?.url;
+              if (nextUrl && nextUrl.startsWith('http')) {
+                fetch(nextUrl, { signal: AbortSignal.timeout(10000) }).catch(() => null);
+              }
+            }
+            (window as any).__nextEpPreloaded = true;
+          }
         }
       });
 

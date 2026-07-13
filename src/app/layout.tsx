@@ -101,6 +101,10 @@ export default async function RootLayout({
         <meta name='apple-mobile-web-app-capable' content='yes' />
         <meta name='format-detection' content='telephone=no' />
         <link rel='apple-touch-icon' href='/icons/icon-192x192.png' />
+        {/* CDN preconnect — 番茄短剧直链 */}        
+        <link rel='preconnect' href='https://qznovelvod.com' />
+        <link rel='preconnect' href='https://m3a.reading-video-cdn.qznovelvod.com' />
+        <link rel='dns-prefetch' href='https://qznovelvod.com' />
         {/* 将配置序列化后直接写入脚本，浏览器端可通过 window.RUNTIME_CONFIG 获取 */}
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         <script

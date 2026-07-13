@@ -10,7 +10,7 @@ import { yellowWords } from '@/lib/yellow';
 export const runtime = 'edge';
 
 const searchCache = new Map<string, { data: any; expiresAt: number }>();
-const CACHE_TTL_MS = 60_000;
+const CACHE_TTL_MS = 180_000;
 const BATCH_SIZE = 15;
 
 async function getKvCache(query: string) {
@@ -86,7 +86,7 @@ function dedupResults(results: SearchResult[]): SearchResult[] {
   return merged;
 }
 
-const OVERALL_TIMEOUT_MS = 12000;
+const OVERALL_TIMEOUT_MS = 8000;
 
 export async function GET(request: Request) {
   const timeoutPromise = new Promise<never>((_, reject) =>
@@ -167,12 +167,13 @@ export async function GET(request: Request) {
     let batchResults: PromiseSettledResult<PromiseSettledResult<SearchResult[]>[]>;
     let backendSettled: PromiseSettledResult<SearchResult[]>;
     if (batchIndex === 1) {
-      const [b, s] = await Promise.allSettled([
-        Promise.allSettled(batchPromises),
-        searchAllBackends(query),
-      ]);
-      batchResults = b;
-      backendSettled = s;
+      // 首批：仅 Apple CMS（~2s 内返回），后端源由 batch=2 独立请求
+      batchResults = { status: 'fulfilled', value: await Promise.allSettled(batchPromises) };
+      backendSettled = { status: 'fulfilled', value: [] };
+    } else if (batchIndex === 2) {
+      // 第二批：仅后端源（YouTube/Archive/番茄/B站）
+      batchResults = { status: 'fulfilled', value: [] };
+      backendSettled = { status: 'fulfilled', value: await searchAllBackends(query) };
     } else {
       batchResults = { status: 'fulfilled', value: await Promise.allSettled(batchPromises) };
       backendSettled = { status: 'fulfilled', value: [] };
@@ -203,7 +204,7 @@ export async function GET(request: Request) {
     }
     const cacheTime = await getCacheTime();
     const finalResults = skipDedup ? results : dedupResults(results);
-    const hasMore = (startIdx + BATCH_SIZE) < activeSites.length;
+    const hasMore = batchIndex === 1;
     const responseData = { results: finalResults, hasMore };
     searchCache.set(query, { data: responseData, expiresAt: now + CACHE_TTL_MS });
     await setKvCache(query, responseData);

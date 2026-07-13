@@ -3,7 +3,7 @@
 import { CheckCircle, Heart, Link, PlayCircleIcon } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   deleteFavorite,
@@ -59,6 +59,8 @@ export default function VideoCard({
   const [favorited, setFavorited] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showSources, setShowSources] = useState(false);
+
+  const prefetchTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const isAggregate = from === 'search' && !!items?.length;
 
@@ -225,6 +227,21 @@ export default function VideoCard({
     actualSearchType,
   ]);
 
+  const handleMouseEnter = useCallback(() => {
+    if (from === 'playrecord' || from === 'favorite') {
+      router.prefetch(`/play?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(actualTitle)}`);
+    }
+    if (from === 'search' && actualSource && actualId) {
+      prefetchTimerRef.current = setTimeout(() => {
+        fetch(`/api/detail?source=${encodeURIComponent(actualSource)}&id=${encodeURIComponent(actualId)}`, { signal: AbortSignal.timeout(3000) }).catch(() => null);
+      }, 300);
+    }
+  }, [from, actualSource, actualId, actualTitle, router]);
+
+  useEffect(() => {
+    return () => clearTimeout(prefetchTimerRef.current);
+  }, []);
+
   const allSourceNames = useMemo(() => {
     if (!isAggregate || !items) return null;
     const seen: Record<string, true> = {};
@@ -278,6 +295,7 @@ export default function VideoCard({
     <div
       className='group relative w-full rounded-lg bg-transparent cursor-pointer transition-all duration-300 ease-in-out sm:hover:scale-[1.05] sm:hover:z-[500] active:scale-[0.98]'
       onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
     >
       {/* 海报容器 */}
       <div className='relative aspect-[2/3] overflow-hidden rounded-lg'>
