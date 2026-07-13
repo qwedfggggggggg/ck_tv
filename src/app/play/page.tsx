@@ -643,11 +643,11 @@ function PlayPageClient() {
 
       let sourcesInfo: SearchResult[];
       if (currentSource && currentId) {
-        const [detailResults, searchResults] = await Promise.all([
-          fetchSourceDetail(currentSource, currentId),
-          fetchSourcesData(searchTitle || videoTitle),
-        ]);
-        sourcesInfo = detailResults.length > 0 ? detailResults : searchResults;
+        const searchPromise = fetchSourcesData(searchTitle || videoTitle);
+        sourcesInfo = await fetchSourceDetail(currentSource, currentId);
+        if (sourcesInfo.length === 0) {
+          sourcesInfo = await searchPromise;
+        }
       } else {
         sourcesInfo = await fetchSourcesData(searchTitle || videoTitle);
       }
