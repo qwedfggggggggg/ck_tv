@@ -257,7 +257,7 @@ export async function getDetailFromApi(
   const detailUrl = `${apiSite.api}${API_CONFIG.detail.path}${id}`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
 
   const response = await fetch(detailUrl, {
     headers: API_CONFIG.detail.headers,

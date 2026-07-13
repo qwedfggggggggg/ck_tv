@@ -164,10 +164,24 @@ export async function GET(request: Request) {
     const batchPromises = batch.map(site =>
       searchFromApi(site, query, getDynamicTimeout(site.key))
     );
-    const batchResults = await Promise.allSettled(batchPromises);
-    allSettled.push(...batchResults);
+    let batchResults: PromiseSettledResult<PromiseSettledResult<SearchResult[]>[]>;
+    let backendSettled: PromiseSettledResult<SearchResult[]>;
+    if (batchIndex === 1) {
+      const [b, s] = await Promise.allSettled([
+        Promise.allSettled(batchPromises),
+        searchAllBackends(query),
+      ]);
+      batchResults = b;
+      backendSettled = s;
+    } else {
+      batchResults = { status: 'fulfilled', value: await Promise.allSettled(batchPromises) };
+      backendSettled = { status: 'fulfilled', value: [] };
+    }
 
-    const backendResults = await searchAllBackends(query);
+    if (batchResults.status === 'fulfilled') {
+      allSettled.push(...batchResults.value);
+    }
+    const backendResults = backendSettled.status === 'fulfilled' ? backendSettled.value : [];
 
     if (activeSites.length > 0) {
       allSettled.forEach((r, i) => {

@@ -200,24 +200,21 @@ function SearchPageClient() {
       attempts.push({ q: trimmed.slice(0, -1), label: `尝试模糊搜索"${trimmed.slice(0, -1)}"` });
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
     for (const attempt of attempts) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
       try {
         const resp = await fetch(`/api/search?q=${encodeURIComponent(attempt.q)}&batch=1`, {
           signal: controller.signal,
         });
+        clearTimeout(timeoutId);
         const data = await resp.json();
         if (data.results?.length > 0) {
-          clearTimeout(timeoutId);
           const isFallback = attempt.label !== trimmed;
           return { results: data.results, fallbackLabel: isFallback ? attempt.label : null, hasMore: data.hasMore ?? false };
         }
-      } catch { /* continue */ }
+      } catch { clearTimeout(timeoutId); /* continue */ }
     }
-
-    clearTimeout(timeoutId);
 
     return { results: [], fallbackLabel: null, hasMore: false };
   }

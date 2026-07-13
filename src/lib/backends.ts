@@ -42,31 +42,33 @@ export async function searchYoutube(query: string): Promise<SearchResult[]> {
     'https://invidious.private.coffee',
     'https://invidious.snopyta.org',
   ];
-  for (const instance of instances) {
-    try {
-      const url = `${instance}/api/v1/search?q=${encodeURIComponent(query)}`;
-      const resp = await fetch(url, {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-        signal: AbortSignal.timeout(3000),
-      });
-      if (!resp.ok) continue;
-      const list = await resp.json();
-      if (!Array.isArray(list)) continue;
-      return list.filter((v: any) => v.type === 'video').slice(0, 10).map((item: any) => ({
-        id: `youtube:${item.videoId}`,
-        title: item.title || '',
-        poster: item.videoThumbnails?.[3]?.url || item.videoThumbnails?.[0]?.url || '',
-        episodes: [{ name: '播放', url: item.videoId }],
-        source: 'backend:youtube',
-        source_name: 'YouTube',
-        year: item.published ? new Date(item.published * 1000).getFullYear().toString() : 'unknown',
-        desc: item.description || '',
-      }));
-    } catch {
-      continue;
-    }
+
+  const tryInstance = async (instance: string) => {
+    const url = `${instance}/api/v1/search?q=${encodeURIComponent(query)}`;
+    const resp = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!resp.ok) throw new Error('non-ok response');
+    const list = await resp.json();
+    if (!Array.isArray(list)) throw new Error('invalid response');
+    return list.filter((v: any) => v.type === 'video').slice(0, 10).map((item: any) => ({
+      id: `youtube:${item.videoId}`,
+      title: item.title || '',
+      poster: item.videoThumbnails?.[3]?.url || item.videoThumbnails?.[0]?.url || '',
+      episodes: [{ name: '播放', url: item.videoId }],
+      source: 'backend:youtube',
+      source_name: 'YouTube',
+      year: item.published ? new Date(item.published * 1000).getFullYear().toString() : 'unknown',
+      desc: item.description || '',
+    }));
+  };
+
+  try {
+    return await Promise.any(instances.map(tryInstance));
+  } catch {
+    return [];
   }
-  return [];
 }
 
 export async function searchArchive(query: string): Promise<SearchResult[]> {

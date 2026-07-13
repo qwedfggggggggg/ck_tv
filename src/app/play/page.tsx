@@ -22,7 +22,7 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import { SearchResult } from '@/lib/types';
-import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
+import { processImageUrl } from '@/lib/utils';
 
 import { getBackendPlayInfo } from '@/lib/backends';
 import CloudflareAISubtitle from '@/components/CloudflareAISubtitle';
@@ -230,23 +230,8 @@ function PlayPageClient() {
     null
   );
 
-  // 优选和测速开关
-  const [optimizationEnabled] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('enableOptimization');
-      if (saved !== null) {
-        try {
-          return JSON.parse(saved);
-        } catch {
-          /* ignore */
-        }
-      }
-    }
-    return true;
-  });
-
   // 保存优选时的测速结果，避免EpisodeSelector重复测速
-  const [precomputedVideoInfo, setPrecomputedVideoInfo] = useState<
+  const [precomputedVideoInfo] = useState<
     Map<string, { quality: string; loadSpeed: string; pingTime: number }>
   >(new Map());
 
@@ -258,7 +243,6 @@ function PlayPageClient() {
   const [isTVCastModalOpen, setIsTVCastModalOpen] = useState(false);
 
   // 播放失败自动备源
-  const [fallbackAttempt, setFallbackAttempt] = useState(false);
   const [fallbackTried, setFallbackTried] = useState<Set<string>>(new Set());
   useEffect(() => {
     fallbackTriedRef.current = fallbackTried;
@@ -281,207 +265,7 @@ function PlayPageClient() {
   const availableSourcesRef = useRef<SearchResult[]>([]);
   const fallbackTriedRef = useRef<Set<string>>(new Set());
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const PLAY_LOAD_TIMEOUT = 8000;
-
-  // -----------------------------------------------------------------------------
-  // 工具函数（Utils）
-  // -----------------------------------------------------------------------------
-
-  // 播放源优选函数
-  const preferBestSource = async (
-    sources: SearchResult[]
-  ): Promise<SearchResult> => {
-    if (sources.length === 1) return sources[0];
-
-    // 将播放源均分为两批，并发测速各批，避免一次性过多请求
-    const batchSize = Math.ceil(sources.length / 2);
-    const allResults: Array<{
-      source: SearchResult;
-      testResult: { quality: string; loadSpeed: string; pingTime: number };
-    } | null> = [];
-
-    for (let start = 0; start < sources.length; start += batchSize) {
-      const batchSources = sources.slice(start, start + batchSize);
-      const batchResults = await Promise.all(
-        batchSources.map(async (source) => {
-          try {
-            // 检查是否有第一集的播放地址
-            if (!source.episodes || source.episodes.length === 0) {
-              console.warn(`播放源 ${source.source_name} 没有可用的播放地址`);
-              return null;
-            }
-
-            const episodeUrl =
-              source.episodes.length > 1
-                ? source.episodes[1]?.url || ''
-                : source.episodes[0]?.url || '';
-            const testResult = await getVideoResolutionFromM3u8(episodeUrl);
-
-            return {
-              source,
-              testResult,
-            };
-          } catch (error) {
-            return null;
-          }
-        })
-      );
-      allResults.push(...batchResults);
-    }
-
-    // 等待所有测速完成，包含成功和失败的结果
-    // 保存所有测速结果到 precomputedVideoInfo，供 EpisodeSelector 使用（包含错误结果）
-    const newVideoInfoMap = new Map<
-      string,
-      {
-        quality: string;
-        loadSpeed: string;
-        pingTime: number;
-        hasError?: boolean;
-      }
-    >();
-    allResults.forEach((result, index) => {
-      const source = sources[index];
-      const sourceKey = `${source.source}-${source.id}`;
-
-      if (result) {
-        // 成功的结果
-        newVideoInfoMap.set(sourceKey, result.testResult);
-      }
-    });
-
-    // 过滤出成功的结果用于优选计算
-    const successfulResults = allResults.filter(Boolean) as Array<{
-      source: SearchResult;
-      testResult: { quality: string; loadSpeed: string; pingTime: number };
-    }>;
-
-    setPrecomputedVideoInfo(newVideoInfoMap);
-
-    if (successfulResults.length === 0) {
-      console.warn('所有播放源测速都失败，使用第一个播放源');
-      return sources[0];
-    }
-
-    // 找出所有有效速度的最大值，用于线性映射
-    const validSpeeds = successfulResults
-      .map((result) => {
-        const speedStr = result.testResult.loadSpeed;
-        if (speedStr === '未知' || speedStr === '测量中...') return 0;
-
-        const match = speedStr.match(/^([\d.]+)\s*(KB\/s|MB\/s)$/);
-        if (!match) return 0;
-
-        const value = parseFloat(match[1]);
-        const unit = match[2];
-        return unit === 'MB/s' ? value * 1024 : value; // 统一转换为 KB/s
-      })
-      .filter((speed) => speed > 0);
-
-    const maxSpeed = validSpeeds.length > 0 ? Math.max(...validSpeeds) : 1024; // 默认1MB/s作为基准
-
-    // 找出所有有效延迟的最小值和最大值，用于线性映射
-    const validPings = successfulResults
-      .map((result) => result.testResult.pingTime)
-      .filter((ping) => ping > 0);
-
-    const minPing = validPings.length > 0 ? Math.min(...validPings) : 50;
-    const maxPing = validPings.length > 0 ? Math.max(...validPings) : 1000;
-
-    // 计算每个结果的评分
-    const resultsWithScore = successfulResults.map((result) => ({
-      ...result,
-      score: calculateSourceScore(
-        result.testResult,
-        maxSpeed,
-        minPing,
-        maxPing
-      ),
-    }));
-
-    // 按综合评分排序，选择最佳播放源
-    resultsWithScore.sort((a, b) => b.score - a.score);
-
-    resultsWithScore.forEach((result, index) => {
-      console.debug(
-        `${index + 1}. ${result.source.source_name
-        } - 评分: ${result.score.toFixed(2)} (${result.testResult.quality}, ${result.testResult.loadSpeed
-        }, ${result.testResult.pingTime}ms)`
-      );
-    });
-
-    return resultsWithScore[0].source;
-  };
-
-  // 计算播放源综合评分
-  const calculateSourceScore = (
-    testResult: {
-      quality: string;
-      loadSpeed: string;
-      pingTime: number;
-    },
-    maxSpeed: number,
-    minPing: number,
-    maxPing: number
-  ): number => {
-    let score = 0;
-
-    // 分辨率评分 (40% 权重)
-    const qualityScore = (() => {
-      switch (testResult.quality) {
-        case '4K':
-          return 100;
-        case '2K':
-          return 85;
-        case '1080p':
-          return 75;
-        case '720p':
-          return 60;
-        case '480p':
-          return 40;
-        case 'SD':
-          return 20;
-        default:
-          return 0;
-      }
-    })();
-    score += qualityScore * 0.4;
-
-    // 下载速度评分 (40% 权重) - 基于最大速度线性映射
-    const speedScore = (() => {
-      const speedStr = testResult.loadSpeed;
-      if (speedStr === '未知' || speedStr === '测量中...') return 30;
-
-      // 解析速度值
-      const match = speedStr.match(/^([\d.]+)\s*(KB\/s|MB\/s)$/);
-      if (!match) return 30;
-
-      const value = parseFloat(match[1]);
-      const unit = match[2];
-      const speedKBps = unit === 'MB/s' ? value * 1024 : value;
-
-      // 基于最大速度线性映射，最高100分
-      const speedRatio = speedKBps / maxSpeed;
-      return Math.min(100, Math.max(0, speedRatio * 100));
-    })();
-    score += speedScore * 0.4;
-
-    // 网络延迟评分 (20% 权重) - 基于延迟范围线性映射
-    const pingScore = (() => {
-      const ping = testResult.pingTime;
-      if (ping <= 0) return 0; // 无效延迟给默认分
-
-      // 如果所有延迟都相同，给满分
-      if (maxPing === minPing) return 100;
-
-      // 线性映射：最低延迟=100分，最高延迟=0分
-      const pingRatio = (maxPing - ping) / (maxPing - minPing);
-      return Math.min(100, Math.max(0, pingRatio * 100));
-    })();
-    score += pingScore * 0.2;
-
-    return Math.round(score * 100) / 100; // 保留两位小数
-  };
+  const PLAY_LOAD_TIMEOUT = 12000;
 
   // 更新视频地址
   const updateVideoUrl = (
@@ -668,7 +452,6 @@ function PlayPageClient() {
 
       setFallbackTried(prev => new Set(prev).add(name));
       setFallbackMessage(`${currentSourceName} 不可用，正在尝试备选源 ${name}...`);
-      setFallbackAttempt(true);
 
       setCurrentSource(source.source);
       setCurrentId(source.id);
@@ -877,15 +660,14 @@ function PlayPageClient() {
           : '🔍 正在搜索播放源...'
       );
 
-      let sourcesInfo = await fetchSourcesData(searchTitle || videoTitle);
-      if (
-        currentSource &&
-        currentId &&
-        !sourcesInfo.some(
-          (source) => source.source === currentSource && source.id === currentId
-        )
-      ) {
+      let sourcesInfo: SearchResult[];
+      if (currentSource && currentId) {
         sourcesInfo = await fetchSourceDetail(currentSource, currentId);
+        if (sourcesInfo.length === 0) {
+          sourcesInfo = await fetchSourcesData(searchTitle || videoTitle);
+        }
+      } else {
+        sourcesInfo = await fetchSourcesData(searchTitle || videoTitle);
       }
       if (sourcesInfo.length === 0) {
         setError('未找到匹配结果');
@@ -1007,7 +789,6 @@ function PlayPageClient() {
       // 重置自动备源状态
       setFallbackTried(new Set());
       setFallbackMessage(null);
-      setFallbackAttempt(false);
 
       // 显示换源加载状态
       setVideoLoadingStage('sourceChanging');
@@ -1106,7 +887,6 @@ function PlayPageClient() {
       // 重置自动备源状态
       setFallbackTried(new Set());
       setFallbackMessage(null);
-      setFallbackAttempt(false);
 
       // 在更换集数前保存当前播放进度
       if (artPlayerRef.current && artPlayerRef.current.paused) {
@@ -1740,7 +1520,6 @@ function PlayPageClient() {
       artPlayerRef.current.on('ready', () => {
         setError(null);
         setFallbackMessage(null);
-        setFallbackAttempt(false);
 
         // 根据用户设置初始化字幕显示状态
         if (artPlayerRef.current && artPlayerRef.current.subtitle) {
