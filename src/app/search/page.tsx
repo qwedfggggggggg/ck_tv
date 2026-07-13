@@ -255,6 +255,7 @@ function SearchPageClient() {
       );
       setFallbackLabel(fbLabel);
       setShowResults(true);
+      sessionStorage.setItem('cktv_sr_' + query, JSON.stringify(results));
 
       // Progressive remaining batches
       if (hasMore) {

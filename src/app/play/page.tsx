@@ -633,23 +633,50 @@ function PlayPageClient() {
         return;
       }
 
-      setLoading(true);
-      setLoadingStage(currentSource && currentId ? 'fetching' : 'searching');
-      setLoadingMessage(
-        currentSource && currentId
-          ? '🎬 正在获取视频详情...'
-          : '🔍 正在搜索播放源...'
-      );
-
       let sourcesInfo: SearchResult[];
+      // 从搜索页带来的缓存直接使用，0 网络请求
       if (currentSource && currentId) {
-        const searchPromise = fetchSourcesData(searchTitle || videoTitle);
-        sourcesInfo = await fetchSourceDetail(currentSource, currentId);
-        if (sourcesInfo.length === 0) {
-          sourcesInfo = await searchPromise;
+        const cacheKey = searchTitle || videoTitle;
+        const cached = cacheKey ? sessionStorage.getItem('cktv_sr_' + cacheKey) : null;
+        if (cached) {
+          try {
+            const parsed: SearchResult[] = JSON.parse(cached);
+            const match = parsed.find(
+              (s) => s.source === currentSource && s.id === currentId
+            );
+            if (match && match.episodes?.length) {
+              sourcesInfo = [match];
+              setAvailableSources(parsed);
+            } else {
+              sourcesInfo = parsed;
+            }
+          } catch {
+            sourcesInfo = [];
+          }
+        } else {
+          sourcesInfo = [];
         }
       } else {
-        sourcesInfo = await fetchSourcesData(searchTitle || videoTitle);
+        sourcesInfo = [];
+      }
+      if (sourcesInfo.length === 0) {
+        setLoading(true);
+        setLoadingStage(currentSource && currentId ? 'fetching' : 'searching');
+        setLoadingMessage(
+          currentSource && currentId
+            ? '🎬 正在获取视频详情...'
+            : '🔍 正在搜索播放源...'
+        );
+
+        if (currentSource && currentId) {
+          const searchPromise = fetchSourcesData(searchTitle || videoTitle);
+          sourcesInfo = await fetchSourceDetail(currentSource, currentId);
+          if (sourcesInfo.length === 0) {
+            sourcesInfo = await searchPromise;
+          }
+        } else {
+          sourcesInfo = await fetchSourcesData(searchTitle || videoTitle);
+        }
       }
       if (sourcesInfo.length === 0) {
         setError('未找到匹配结果');
