@@ -10,6 +10,7 @@ import { getConfig } from '@/lib/config';
 import RuntimeConfig from '@/lib/runtime';
 
 
+import PasswordGate from '../components/PasswordGate';
 import { GlobalErrorIndicator } from '../components/GlobalErrorIndicator';
 import { SiteProvider } from '../components/SiteProvider';
 import { ThemeProvider } from '../components/ThemeProvider';
@@ -118,8 +119,10 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <SiteProvider siteName={siteName} announcement={announcement}>
-            {children}
-            <GlobalErrorIndicator />
+            <PasswordGate>
+              {children}
+              <GlobalErrorIndicator />
+            </PasswordGate>
           </SiteProvider>
         </ThemeProvider>
       </body>
